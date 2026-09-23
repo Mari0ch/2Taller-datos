@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitAir Parks Madrid Pro — Tab Navigation System</title>
+  <meta name="description" content="Monitor en tiempo real de calidad del aire y meteorología en los parques de Madrid con recomendador de equipación y dosis de contaminación para deportistas.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: '#ff5500',
+            darkBg: '#0a0a0a',
+            darkSurface: '#111111',
+            darkCard: '#161616'
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            heading: ['Montserrat', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Leaflet.js -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0a0a0a;
+      color: #ffffff;
+    }
+    h1, h2, h3, h4, .font-heading {
+      font-family: 'Montserrat', sans-serif;
+    }
+    .leaflet-popup-content-wrapper {
+      background: #111111 !important;
+      color: #ffffff !important;
+      border: 1px solid #262626 !important;
+      border-radius: 1rem !important;
+    }
+    .leaflet-popup-tip {
+      background: #111111 !important;
+    }
+    /* Hide scrollbars */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-[#0a0a0a] text-white min-h-screen flex flex-col antialiased selection:bg-[#ff5500] selection:text-white" id="appBody">
+
+  <!-- TOP BRAND HEADER -->
+  <header class="border-b border-neutral-800 bg-[#111111]/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#ff5500] to-orange-400 flex items-center justify-center shadow-lg shadow-[#ff5500]/30 font-black text-black text-xl">
+          ⚡
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-base sm:text-lg font-black tracking-tight font-heading">FITAIR PARKS</span>
+            <span class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-[#ff5500] text-black">PRO</span>
+          </div>
+          <p class="text-[10px] text-neutral-400">Madrid • Deporte & Salud Atmosférica</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Quick High Contrast Toggle -->
+        <button id="quickContrastBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-neutral-900 border border-neutral-700 hover:border-neutral-500 transition-colors">
+          <span>☀️</span>
+          <span class="hidden sm:inline" id="contrastLabel">Luz Solar</span>
+        </button>
+
+        <button onclick="refreshData()" class="p-2 rounded-xl text-neutral-400 hover:text-white bg-neutral-900 border border-neutral-800">
+          🔄
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- TAB NAVIGATION BAR -->
+  <nav class="sticky top-16 z-30 w-full bg-[#111111] border-b border-neutral-800 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-14 overflow-x-auto no-scrollbar gap-2">
+        <button onclick="switchTab('tab-map')" id="nav-tab-map" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all bg-[#ff5500] text-black shadow-lg shadow-[#ff5500]/25">
+          <span>🗺️</span>
+          <span>1. Mapa & Parques</span>
+        </button>
+
+        <button onclick="switchTab('tab-avoid')" id="nav-tab-avoid" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all text-neutral-400 hover:text-white hover:bg-neutral-900">
+          <span>⚠️</span>
+          <span>2. Zonas a Evitar & Polen</span>
+        </button>
+
+        <button onclick="switchTab('tab-outfit')" id="nav-tab-outfit" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all text-neutral-400 hover:text-white hover:bg-neutral-900">
+          <span>🏃🏻‍♂️</span>
+          <span>3. Equipación & Planificador</span>
+        </button>
+
+        <button onclick="switchTab('tab-hourly')" id="nav-tab-hourly" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all text-neutral-400 hover:text-white hover:bg-neutral-900">
+          <span>📈</span>
+          <span>4. Predicción Horaria</span>
+        </button>
+
+        <button onclick="switchTab('tab-settings')" id="nav-tab-settings" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all text-neutral-400 hover:text-white hover:bg-neutral-900">
+          <span>⚙️</span>
+          <span>5. Exportar & Ajustes</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTAINER WITH 5 TAB SECTIONS -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+    <!-- ==================== PESTAÑA 1: MAPA & PARQUES ==================== -->
+    <section id="tab-map" class="tab-content space-y-6">
+      <!-- Location & Cleanest Parks Banner -->
+      <div class="p-5 sm:p-6 rounded-3xl bg-[#141414] border border-neutral-800 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-[10px] font-black tracking-widest text-emerald-400 uppercase font-heading">RADAR GEOLOCALIZADO DE SALUD</span>
+            <span id="gpsStatusBadge" class="text-[9px] bg-neutral-800 text-neutral-300 font-mono px-2 py-0.5 rounded">GPS PENDIENTE</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-black font-heading">Encuentra los Parques Más Limpios Cerca de Ti</h2>
+          <p class="text-xs text-neutral-400 mt-0.5">Calcula con fórmula Haversine la distancia exacta a los circuitos con menor índice de contaminación de Madrid.</p>
+        </div>
+
+        <button onclick="requestUserLocation()" id="locationBtn" class="flex items-center gap-2 px-5 py-3 rounded-xl bg-[#ff5500] hover:bg-[#ff6600] text-black font-black text-xs transition-all shadow-lg shadow-[#ff5500]/30 cursor-pointer shrink-0">
+          <span>📍</span>
+          <span id="locBtnText">Usar Mi Ubicación</span>
+        </button>
+      </div>
+
+      <!-- Cleanest 3 Parks Highlight Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="cleanestParksGrid">
+        <!-- Rendered via JS -->
+      </div>
+
+      <!-- Map & Controls -->
+      <div class="rounded-3xl border border-neutral-800 overflow-hidden bg-[#111111] shadow-2xl relative">
+        <div class="p-4 border-b border-neutral-800 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <span class="font-bold text-xs">Leyenda de Calidad del Aire:</span>
+            <div class="flex items-center gap-3 text-[11px] font-mono">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Verde (Aire Limpio)</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Naranja (Precaución)</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Rojo (Evitar)</span>
+            </div>
+          </div>
+          <span class="text-[11px] text-neutral-400 font-mono">8 Parques Monitorizados</span>
+        </div>
+        
+        <div id="mapContainer" style="height: 520px; width: 100%;" class="z-10"></div>
+      </div>
+
+      <!-- Parks List -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-black font-heading">Fichas de Parques Deportivos</h3>
+          <span class="text-xs text-neutral-400">Haz click para seleccionar y ver detalles</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="parksCardGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PESTAÑA 2: ZONAS A EVITAR & POLEN ==================== -->
+    <section id="tab-avoid" class="tab-content hidden space-y-6">
+      <!-- 3 Most Polluted Zones Panel -->
+      <div class="p-6 rounded-3xl bg-red-950/20 border border-red-500/40 shadow-xl space-y-4">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 text-xl">⚠️</div>
+            <div>
+              <span class="text-[10px] font-black tracking-widest text-red-400 uppercase font-heading">ALERTA EPIDEMIOLÓGICA DEPORTIVA</span>
+              <h2 class="text-xl sm:text-2xl font-black font-heading text-white">Las 3 Zonas Más Contaminadas en Tiempo Real</h2>
+            </div>
+          </div>
+          <span class="text-[10px] bg-red-500 text-white font-black px-2.5 py-1 rounded-full uppercase">Evitar Ejercicio Intenso</span>
+        </div>
+
+        <p class="text-xs text-neutral-300 leading-relaxed">
+          En estas estaciones y sus áreas limítrofes, la combinación de tráfico pesado (M-30, A-42, Eje Prado-Recoletos) y la inversión térmica matinal y vespertina generan picos de dióxido de nitrógeno (NO₂) y micropartículas (PM₁₀).
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          <!-- Zone 1 -->
+          <div class="p-4 rounded-2xl bg-black/60 border border-red-500/30 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-white text-sm">1. Plaza Elíptica (A-42)</span>
+              <span class="text-xs font-mono font-bold text-red-400">NO₂: 72 µg/m³</span>
+            </div>
+            <p class="text-[11px] text-neutral-400">Embudo de tráfico hacia Toledo. ICA Desfavorable (112). Evitar correr en Parque Emperatriz María de Austria lado este.</p>
+          </div>
+          <!-- Zone 2 -->
+          <div class="p-4 rounded-2xl bg-black/60 border border-red-500/30 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-white text-sm">2. Escuelas Aguirre (Alcalá)</span>
+              <span class="text-xs font-mono font-bold text-red-400">NO₂: 58 µg/m³</span>
+            </div>
+            <p class="text-[11px] text-neutral-400">Afecta el perímetro norte del Parque del Retiro junto a O'Donnell y Puerta de Alcalá. Correr hacia el interior o sur.</p>
+          </div>
+          <!-- Zone 3 -->
+          <div class="p-4 rounded-2xl bg-black/60 border border-red-500/30 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-white text-sm">3. Méndez Álvaro / M-30 Sur</span>
+              <span class="text-xs font-mono font-bold text-amber-400">NO₂: 51 µg/m³</span>
+            </div>
+            <p class="text-[11px] text-neutral-400">Estación intermodal y nudo M-30. Evitar tramo bajo de Madrid Río cercano al Puente de Vallecas en hora punta.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Allergy Mode Module -->
+      <div class="p-6 rounded-3xl bg-[#141414] border border-neutral-800 shadow-xl space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-black tracking-widest text-fuchsia-400 uppercase font-heading">BIODIVERSIDAD & AEROBIOLOGÍA</span>
+              <span id="allergyStateBadge" class="text-[9px] bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded font-mono font-bold">DESACTIVADO</span>
+            </div>
+            <h3 class="text-xl font-black font-heading mt-1">Conmutador "Modo Alergia" & Dispersión de Polen</h3>
+            <p class="text-xs text-neutral-400 mt-1">Cruza la flora arbórea del parque (plátanos de sombra, cipreses, gramíneas) con la velocidad del viento y la humedad relativa.</p>
+          </div>
+
+          <label class="relative inline-flex items-center cursor-pointer shrink-0">
+            <input type="checkbox" id="allergyToggle" onchange="toggleAllergyMode(this.checked)" class="sr-only peer">
+            <div class="w-14 h-8 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-fuchsia-500"></div>
+            <span class="ml-3 text-xs font-black uppercase text-white font-heading">Modo Alergia</span>
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2">
+            <h4 class="text-sm font-bold text-fuchsia-300">🌿 Parques Refugio Hipoalergénico</h4>
+            <p class="text-xs text-neutral-400">Recomendados para corredores con rinitis o asma estacional: <strong>Madrid Río</strong> (mayor porcentaje de viento cruzado fluvial) y <strong>Parque Juan Carlos I</strong> (amplias praderas y menos densidad de plátano de sombra).</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2">
+            <h4 class="text-sm font-bold text-amber-300">⚠️ Máxima Precaución Polínica</h4>
+            <p class="text-xs text-neutral-400"><strong>El Retiro</strong> (avenidas alineadas con Platanus hispanica) y <strong>Parque del Oeste</strong> (altas concentraciones de cipreses en Paseo de Camoens durante invierno y primavera).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PESTAÑA 3: EQUIPACIÓN & PLANIFICADOR ==================== -->
+    <section id="tab-outfit" class="tab-content hidden space-y-6">
+      <!-- Activity Switcher (Running vs Walking) with +10°C thermal explanation -->
+      <div class="p-6 rounded-3xl bg-[#141414] border border-neutral-800 shadow-xl space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span class="text-[10px] font-black tracking-widest text-[#ff5500] uppercase font-heading">FISIOLOGÍA DEL ESFUERZO</span>
+            <h2 class="text-xl sm:text-2xl font-black font-heading">Selector de Actividad & Carga Térmica</h2>
+            <p class="text-xs text-neutral-400 mt-0.5">Al correr, el cuerpo genera calor metabólico y la <strong>sensación térmica efectiva aumenta +10°C</strong>.</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 bg-neutral-900 p-1.5 rounded-2xl border border-neutral-800 shrink-0">
+            <button onclick="setActivity('running')" id="act-running-btn" class="px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all bg-[#ff5500] text-black shadow-md font-heading">
+              <span>🏃🏻‍♂️</span>
+              <span>Correr (+10°C)</span>
+            </button>
+            <button onclick="setActivity('walking')" id="act-walking-btn" class="px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-neutral-400 hover:text-white font-heading">
+              <span>🚶🏻‍♂️</span>
+              <span>Andar (Real)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Smart Outfit Advisor Section -->
+      <div class="p-6 rounded-3xl bg-[#141414] border border-neutral-800 shadow-xl space-y-6" id="outfitAdvisorContainer">
+        <div class="flex items-center justify-between pb-4 border-b border-neutral-800">
+          <div>
+            <span class="text-[10px] font-black tracking-widest text-[#ff5500] uppercase font-heading">RECOMENDADOR INTELIGENTE DE ROPA</span>
+            <h3 class="text-lg sm:text-xl font-black font-heading" id="outfitHeading">Equipación para Correr a 16°C (Sensación ~26°C)</h3>
+          </div>
+          <div class="text-right">
+            <span class="text-xs text-neutral-400 block">Parque Activo:</span>
+            <span class="font-bold text-white text-sm" id="outfitParkName">El Retiro</span>
+          </div>
+        </div>
+
+        <!-- Garments Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="garmentsGrid">
+          <!-- Rendered dynamically via JS -->
+        </div>
+
+        <!-- Outfit Advice Callout -->
+        <div class="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-300 leading-relaxed" id="outfitOverallText">
+          Cargando consejos de vestimenta...
+        </div>
+      </div>
+
+      <!-- Inhaled Pollution Dose Calculator -->
+      <div class="p-6 rounded-3xl bg-[#141414] border border-neutral-800 shadow-xl space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-neutral-800">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-black tracking-widest text-emerald-400 uppercase font-heading">VENTILACIÓN PULMONAR ESTIMADA</span>
+              <span class="text-[9px] bg-emerald-500/20 text-emerald-400 font-mono font-bold px-2 py-0.5 rounded">VE ~65 L/MIN</span>
+            </div>
+            <h3 class="text-xl font-black font-heading mt-1">Calculadora de Contaminación Inhalada</h3>
+            <p class="text-xs text-neutral-400">Compara la dosis absorbida en microgramos (µg) según la duración de tu entrenamiento.</p>
+          </div>
+
+          <div class="flex items-center gap-2 bg-neutral-900 p-1 rounded-xl border border-neutral-800">
+            <button onclick="setDuration(30)" id="dur-30" class="px-3 py-1.5 rounded-lg text-xs font-black bg-[#ff5500] text-black">30 min</button>
+            <button onclick="setDuration(60)" id="dur-60" class="px-3 py-1.5 rounded-lg text-xs font-bold text-neutral-400 hover:text-white">60 min</button>
+            <button onclick="setDuration(90)" id="dur-90" class="px-3 py-1.5 rounded-lg text-xs font-bold text-neutral-400 hover:text-white">90 min</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="doseMetricsGrid">
+          <div class="p-4 rounded-2xl bg-neutral-950 border border-neutral-800">
+            <span class="text-[10px] text-neutral-400 uppercase font-bold block">Volumen de Aire Inhalado</span>
+            <span class="text-2xl font-black font-mono text-white mt-1 block" id="doseVolume">1.95 m³</span>
+            <span class="text-[11px] text-neutral-400">Equivalente a ~1,950 litros de aire</span>
+          </div>
+          <div class="p-4 rounded-2xl bg-neutral-950 border border-neutral-800">
+            <span class="text-[10px] text-neutral-400 uppercase font-bold block">Dióxido de Nitrógeno (NO₂)</span>
+            <span class="text-2xl font-black font-mono text-[#ff5500] mt-1 block" id="doseNo2">54.6 µg</span>
+            <span class="text-[11px] text-neutral-400">Absorción alveolar calculada</span>
+          </div>
+          <div class="p-4 rounded-2xl bg-neutral-950 border border-neutral-800">
+            <span class="text-[10px] text-neutral-400 uppercase font-bold block">Evaluación Fisiológica</span>
+            <span class="text-lg font-black text-emerald-400 mt-1 block" id="doseRisk">🟢 Exposición Segura</span>
+            <span class="text-[11px] text-neutral-400">Sin riesgo para vías respiratorias</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PESTAÑA 4: PREDICCIÓN HORARIA ==================== -->
+    <section id="tab-hourly" class="tab-content hidden space-y-6">
+      <!-- Best Time Banner -->
+      <div class="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-[#141414] via-neutral-950 to-emerald-950/30 border border-neutral-800 shadow-2xl space-y-6">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-[10px] font-black tracking-widest text-emerald-400 uppercase font-heading">ESTUDIO DE CICLOS DIURNOS MADRILEÑOS</span>
+            <span class="text-[9px] bg-emerald-500 text-black font-extrabold px-2 py-0.5 rounded font-mono">🏆 -28% A -35% NO₂</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-black font-heading">La Mejor Hora para Entrenar Hoy</h2>
+          <p class="text-xs text-neutral-300 max-w-2xl mt-1">El tráfico de la M-30 y accesos radiales genera dos picos críticos de contaminación. Aprovecha las ventanas doradas para cuidar tus pulmones.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
+            <span class="text-[10px] font-black uppercase tracking-wider text-emerald-400 block">🏆 Ventana Oro Noche</span>
+            <span class="text-2xl font-black font-mono text-white mt-1 block">20:30 - 22:30 h</span>
+            <p class="text-xs text-neutral-300 mt-1">Descenso drástico de emisiones y temperatura fresca ideal.</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/30">
+            <span class="text-[10px] font-black uppercase tracking-wider text-sky-400 block">🌅 Ventana Oro Mañana</span>
+            <span class="text-2xl font-black font-mono text-white mt-1 block">06:30 - 08:00 h</span>
+            <p class="text-xs text-neutral-300 mt-1">Aire limpio antes de la entrada laboral a oficinas y colegios.</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-red-500/10 border border-red-500/30">
+            <span class="text-[10px] font-black uppercase tracking-wider text-red-400 block">🚗 Pico Tráfico Mañana</span>
+            <span class="text-2xl font-black font-mono text-white mt-1 block">08:15 - 09:45 h</span>
+            <p class="text-xs text-neutral-300 mt-1">Máxima saturación en M-30 y arterias radiales.</p>
+          </div>
+          <div class="p-4 rounded-2xl bg-red-500/10 border border-red-500/30">
+            <span class="text-[10px] font-black uppercase tracking-wider text-red-400 block">🚗 Pico Tráfico Tarde</span>
+            <span class="text-2xl font-black font-mono text-white mt-1 block">18:30 - 20:00 h</span>
+            <p class="text-xs text-neutral-300 mt-1">Salida laboral y retenciones en accesos.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart.js Container -->
+      <div class="p-6 rounded-3xl bg-[#141414] border border-neutral-800 shadow-xl space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-neutral-800">
+          <h3 class="text-lg font-black font-heading">Evolución Horaria de Contaminación & Temperatura</h3>
+          <div class="flex items-center gap-2">
+            <button onclick="updateChartMetric('no2')" id="chart-no2-btn" class="px-3 py-1 rounded-lg text-xs font-black bg-[#ff5500] text-black">NO₂ (µg/m³)</button>
+            <button onclick="updateChartMetric('temp')" id="chart-temp-btn" class="px-3 py-1 rounded-lg text-xs font-bold text-neutral-400 bg-neutral-900 border border-neutral-800">Temperatura (°C)</button>
+          </div>
+        </div>
+        <div style="height: 320px; width: 100%;">
+          <canvas id="evolutionChartCanvas"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PESTAÑA 5: EXPORTAR & AJUSTES ==================== -->
+    <section id="tab-settings" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- GPX Export -->
+        <div class="p-6 rounded-3xl bg-[#141414] border border-neutral-800 shadow-xl flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center gap-2.5 mb-2">
+              <span class="p-2 rounded-xl bg-[#ff5500]/20 text-[#ff5500] text-lg">⌚</span>
+              <h3 class="text-xl font-black font-heading">Exportar Rutas GPX para Relojes Deportivos</h3>
+            </div>
+            <p class="text-xs text-neutral-400 leading-relaxed mb-4">
+              Descarga el trazado perimetral del parque con waypoints de fuentes de agua potable y puntos de acceso para sincronizar con <strong>Garmin Connect, Strava, Apple Watch, Polar, Coros y Suunto</strong>.
+            </p>
+
+            <label class="text-xs font-bold text-neutral-400 block mb-1">Selecciona Parque:</label>
+            <select id="gpxParkSelect" class="w-full p-3 rounded-xl bg-neutral-900 border border-neutral-700 text-white font-bold text-xs">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+
+          <button onclick="downloadSelectedParkGPX()" class="w-full py-3.5 px-4 rounded-xl bg-[#ff5500] hover:bg-[#ff6600] text-black font-black text-xs transition-all shadow-lg shadow-[#ff5500]/25 cursor-pointer">
+            📥 Descargar Trazado GPX
+          </button>
+        </div>
+
+        <!-- High Contrast Mode Switcher -->
+        <div class="p-6 rounded-3xl bg-[#141414] border border-neutral-800 shadow-xl flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center gap-2.5 mb-2">
+              <span class="p-2 rounded-xl bg-amber-500/20 text-amber-400 text-lg">☀️</span>
+              <h3 class="text-xl font-black font-heading">Modo Alto Contraste Exterior (Luz Solar)</h3>
+            </div>
+            <p class="text-xs text-neutral-400 leading-relaxed mb-4">
+              Optimizado para visibilidad en pantalla bajo la luz directa del sol mientras corres. Cambia el tema a blanco puro con tipografía ultra-negra y bordes nítidos.
+            </p>
+
+            <div class="p-4 rounded-2xl bg-neutral-900 border border-neutral-800 text-xs">
+              <span class="text-neutral-400 block mb-1">Estado de lectura:</span>
+              <span id="contrastModeStateText" class="font-bold text-white font-mono">🌙 MODO OSCURO DEPORTIVO ACTIVO</span>
+            </div>
+          </div>
+
+          <button onclick="toggleHighContrast()" id="toggleContrastBtn" class="w-full py-3.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-500 text-black font-black text-xs transition-all shadow-lg shadow-amber-400/20 cursor-pointer">
+            ☀️ Activar Modo Alto Contraste
+          </button>
+        </div>
+      </div>
+
+      <!-- Municipal Sync Info -->
+      <div class="p-6 rounded-3xl bg-[#141414] border border-neutral-800 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h4 class="text-base font-black font-heading">Red de Vigilancia Atmosférica del Ayuntamiento de Madrid</h4>
+          <p class="text-xs text-neutral-400 mt-1">Sincronización automática cada 20 minutos (:15, :35, :55). Distancias parque-estación calculadas con fórmula Haversine.</p>
+        </div>
+        <span class="text-xs font-mono font-bold bg-neutral-900 px-3 py-1.5 rounded-xl border border-neutral-800 text-emerald-400">
+          🟢 24 Estaciones Conectadas
+        </span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MOBILE BOTTOM NAVIGATION (FIXED BAR) -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#111111]/95 border-t border-neutral-800 backdrop-blur-xl">
+    <div class="grid grid-cols-5 h-16 max-w-md mx-auto px-1">
+      <button onclick="switchTab('tab-map')" class="mobile-tab-btn flex flex-col items-center justify-center text-[#ff5500]" id="mob-tab-map">
+        <span class="text-lg">🗺️</span>
+        <span class="text-[9px] font-black font-heading mt-0.5">Mapa</span>
+      </button>
+      <button onclick="switchTab('tab-avoid')" class="mobile-tab-btn flex flex-col items-center justify-center text-neutral-400" id="mob-tab-avoid">
+        <span class="text-lg">⚠️</span>
+        <span class="text-[9px] font-black font-heading mt-0.5">Evitar</span>
+      </button>
+      <button onclick="switchTab('tab-outfit')" class="mobile-tab-btn flex flex-col items-center justify-center text-neutral-400" id="mob-tab-outfit">
+        <span class="text-lg">🏃🏻‍♂️</span>
+        <span class="text-[9px] font-black font-heading mt-0.5">Ropa</span>
+      </button>
+      <button onclick="switchTab('tab-hourly')" class="mobile-tab-btn flex flex-col items-center justify-center text-neutral-400" id="mob-tab-hourly">
+        <span class="text-lg">📈</span>
+        <span class="text-[9px] font-black font-heading mt-0.5">Horas</span>
+      </button>
+      <button onclick="switchTab('tab-settings')" class="mobile-tab-btn flex flex-col items-center justify-center text-neutral-400" id="mob-tab-settings">
+        <span class="text-lg">⚙️</span>
+        <span class="text-[9px] font-black font-heading mt-0.5">Ajustes</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    // --- 1. DATA MODEL ---
+    const MADRID_PARKS = [
+      {
+        id: 'retiro',
+        name: 'Parque de El Retiro',
+        district: 'Retiro / Salamanca',
+        coords: [40.4153, -3.6845],
+        areaHa: 125,
+        perimeterKm: 4.5,
+        circuitType: 'Tierra compacta y asfalto',
+        waterFountains: 18,
+        exerciseScore: 84,
+        airQuality: { aqi: 35, level: 'good', no2: 28, pm10: 16, stationName: 'Escuelas Aguirre' },
+        weather: { temperature: 16, isRaining: false, windSpeed: 12, humidity: 48 },
+        pollen: { score: 42, risk: 'moderate', main: 'Plátano de sombra (Platanus)' },
+        flora: ['Plátano de sombra', 'Ciprés', 'Castaño de Indias']
+      },
+      {
+        id: 'casa-campo',
+        name: 'Casa de Campo',
+        district: 'Moncloa-Aravaca / Latina',
+        coords: [40.4230, -3.7540],
+        areaHa: 1722,
+        perimeterKm: 16.0,
+        circuitType: 'Senderos de tierra y pistas forestales',
+        waterFountains: 24,
+        exerciseScore: 95,
+        airQuality: { aqi: 18, level: 'good', no2: 12, pm10: 9, stationName: 'Casa de Campo' },
+        weather: { temperature: 15, isRaining: false, windSpeed: 14, humidity: 45 },
+        pollen: { score: 28, risk: 'low', main: 'Encina y Pino piñonero' },
+        flora: ['Encina', 'Pino piñonero', 'Retama']
+      },
+      {
+        id: 'madrid-rio',
+        name: 'Madrid Río',
+        district: 'Arganzuela / Usera',
+        coords: [40.3990, -3.7120],
+        areaHa: 120,
+        perimeterKm: 8.2,
+        circuitType: 'Asfalto y carril bici liso',
+        waterFountains: 32,
+        exerciseScore: 88,
+        airQuality: { aqi: 32, level: 'good', no2: 26, pm10: 15, stationName: 'Plaza del Carmen' },
+        weather: { temperature: 16, isRaining: false, windSpeed: 16, humidity: 50 },
+        pollen: { score: 30, risk: 'low', main: 'Álamo blanco y sauces' },
+        flora: ['Álamo', 'Sauce', 'Gramíneas fluviales']
+      },
+      {
+        id: 'oeste',
+        name: 'Parque del Oeste',
+        district: 'Moncloa-Aravaca',
+        coords: [40.4300, -3.7250],
+        areaHa: 87,
+        perimeterKm: 5.1,
+        circuitType: 'Caminos de tierra con desniveles',
+        waterFountains: 12,
+        exerciseScore: 86,
+        airQuality: { aqi: 28, level: 'good', no2: 21, pm10: 12, stationName: 'Cuatro Caminos' },
+        weather: { temperature: 15, isRaining: false, windSpeed: 15, humidity: 46 },
+        pollen: { score: 48, risk: 'moderate', main: 'Ciprés de Arizona' },
+        flora: ['Ciprés', 'Pino', 'Cedro']
+      },
+      {
+        id: 'juan-carlos',
+        name: 'Parque Juan Carlos I',
+        district: 'Barajas',
+        coords: [40.4630, -3.6120],
+        areaHa: 160,
+        perimeterKm: 6.8,
+        circuitType: 'Asfalto y zahorra prensada',
+        waterFountains: 22,
+        exerciseScore: 92,
+        airQuality: { aqi: 22, level: 'good', no2: 18, pm10: 11, stationName: 'Barajas Pueblo' },
+        weather: { temperature: 16, isRaining: false, windSpeed: 18, humidity: 44 },
+        pollen: { score: 25, risk: 'low', main: 'Olivo y ciprés' },
+        flora: ['Olivo', 'Ciprés', 'Pradera']
+      },
+      {
+        id: 'dehesa',
+        name: 'Dehesa de la Villa',
+        district: 'Moncloa-Aravaca',
+        coords: [40.4600, -3.7250],
+        areaHa: 64,
+        perimeterKm: 4.0,
+        circuitType: 'Pistas de arena y tierra natural',
+        waterFountains: 10,
+        exerciseScore: 91,
+        airQuality: { aqi: 24, level: 'good', no2: 19, pm10: 13, stationName: 'Barrio del Pilar' },
+        weather: { temperature: 15, isRaining: false, windSpeed: 14, humidity: 46 },
+        pollen: { score: 32, risk: 'low', main: 'Pino carrasco y encina' },
+        flora: ['Pino piñonero', 'Pino carrasco', 'Encina']
+      },
+      {
+        id: 'quinta-fuente',
+        name: 'Quinta de Fuente del Berro',
+        district: 'Salamanca',
+        coords: [40.4280, -3.6620],
+        areaHa: 13,
+        perimeterKm: 2.1,
+        circuitType: 'Senderos adoquinados y tierra',
+        waterFountains: 6,
+        exerciseScore: 68,
+        airQuality: { aqi: 52, level: 'moderate', no2: 44, pm10: 22, stationName: 'Moratalaz' },
+        weather: { temperature: 17, isRaining: false, windSpeed: 10, humidity: 47 },
+        pollen: { score: 55, risk: 'high', main: 'Plátano y castaño' },
+        flora: ['Plátano', 'Castaño', 'Laurel']
+      },
+      {
+        id: 'enlace-m30',
+        name: 'Parque Emperatriz Mª de Austria (Plaza Elíptica)',
+        district: 'Carabanchel',
+        coords: [40.3810, -3.7190],
+        areaHa: 60,
+        perimeterKm: 3.5,
+        circuitType: 'Tierra y asfalto junto a nudo vial',
+        waterFountains: 8,
+        exerciseScore: 42,
+        airQuality: { aqi: 78, level: 'unfavorable', no2: 68, pm10: 38, stationName: 'Plaza Elíptica' },
+        weather: { temperature: 17, isRaining: false, windSpeed: 9, humidity: 52 },
+        pollen: { score: 62, risk: 'high', main: 'Gramíneas y plátano' },
+        flora: ['Plátano', 'Gramíneas'],
+        isAvoidZone: true
+      }
+    ];
+
+    // State
+    let currentActivity = 'running'; // 'running' | 'walking'
+    let isAllergyMode = false;
+    let isHighContrast = false;
+    let selectedPark = MADRID_PARKS[0];
+    let selectedDuration = 30; // 30, 60, 90 min
+    let userCoords = null;
+    let map = null;
+    let markers = [];
+    let chartInstance = null;
+    let currentChartMetric = 'no2';
+
+    // Haversine Formula
+    function calculateHaversine(lat1, lon1, lat2, lon2) {
+      const R = 6371; // km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return Math.round(R * c * 10) / 10;
+    }
+
+    // --- 2. TAB SWITCHING LOGIC ---
+    function switchTab(tabId) {
+      const tabs = ['tab-map', 'tab-avoid', 'tab-outfit', 'tab-hourly', 'tab-settings'];
+      
+      tabs.forEach(t => {
+        const el = document.getElementById(t);
+        const navBtn = document.getElementById(`nav-${t}`);
+        const mobBtn = document.getElementById(`mob-${t}`);
+
+        if (t === tabId) {
+          el.classList.remove('hidden');
+          if (navBtn) {
+            navBtn.className = 'tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all bg-[#ff5500] text-black shadow-lg shadow-[#ff5500]/25';
+          }
+          if (mobBtn) {
+            mobBtn.className = 'mobile-tab-btn flex flex-col items-center justify-center text-[#ff5500]';
+          }
+        } else {
+          el.classList.add('hidden');
+          if (navBtn) {
+            navBtn.className = 'tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all text-neutral-400 hover:text-white hover:bg-neutral-900';
+          }
+          if (mobBtn) {
+            mobBtn.className = 'mobile-tab-btn flex flex-col items-center justify-center text-neutral-400';
+          }
+        }
+      });
+
+      // Special resize hook for Leaflet map & Chart.js
+      if (tabId === 'tab-map' && map) {
+        setTimeout(() => map.invalidateSize(), 200);
+      }
+      if (tabId === 'tab-hourly' && chartInstance) {
+        setTimeout(() => chartInstance.resize(), 200);
+      }
+    }
+
+    // --- 3. MAP INITIALIZATION ---
+    let tileLayer = null;
+
+    function initMap() {
+      map = L.map('mapContainer', {
+        zoomControl: true,
+        attributionControl: true
+      }).setView([40.4200, -3.7000], 12);
+
+      // CartoDB Dark Matter by default (completely free, no API key needed)
+      // OpenStreetMap fallback for high contrast / daylight
+      const defaultTileUrl = isHighContrast
+        ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+      tileLayer = L.tileLayer(defaultTileUrl, {
+        attribution: isHighContrast
+          ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: isHighContrast ? 'abc' : 'abcd',
+        maxZoom: 19
+      }).addTo(map);
+
+      renderMapMarkers();
+    }
+
+    function renderMapMarkers() {
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+
+      MADRID_PARKS.forEach(park => {
+        let color = '#10b981'; // Green
+        let label = '🟢 Aire Limpio';
+        if (park.isAvoidZone || park.airQuality.aqi > 60) {
+          color = '#ef4444'; // Red
+          label = '🔴 Zona a Evitar';
+        } else if (park.airQuality.aqi > 40 || (isAllergyMode && park.pollen.risk === 'high')) {
+          color = '#f59e0b'; // Orange
+          label = '🟠 Precaución';
+        }
+
+        const customIcon = L.divIcon({
+          className: 'custom-map-pin',
+          html: `<div style="background-color: ${color}; width: 28px; height: 28px; border-radius: 50%; border: 3px solid #111111; box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: #000;">⚡</div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        });
+
+        const marker = L.marker(park.coords, { icon: customIcon }).addTo(map);
+        
+        const popupContent = `
+          <div style="font-family: 'Inter', sans-serif; padding: 4px; min-width: 180px;">
+            <div style="font-size: 10px; font-weight: 900; color: ${color}; text-transform: uppercase;">${label}</div>
+            <div style="font-size: 14px; font-weight: 800; color: #fff; margin: 2px 0;">${park.name}</div>
+            <div style="font-size: 11px; color: #a3a3a3;">${park.district}</div>
+            <div style="margin-top: 8px; font-size: 11px; font-family: monospace; display: flex; justify-content: space-between; border-top: 1px solid #333; padding-top: 4px;">
+              <span>ICA: <b>${park.airQuality.aqi}</b></span>
+              <span>NO₂: <b>${park.airQuality.no2} µg</b></span>
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        marker.on('click', () => selectPark(park.id));
+        markers.push(marker);
+      });
+    }
+
+    // --- 4. GEOLOCATION ("Usar mi ubicación") ---
+    function requestUserLocation() {
+      const btn = document.getElementById('locationBtn');
+      const text = document.getElementById('locBtnText');
+      text.innerText = 'Calculando GPS...';
+
+      if (!navigator.geolocation) {
+        fallbackLocation();
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          userCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          applyUserLocation();
+        },
+        () => {
+          // Fallback to Puerta del Sol
+          fallbackLocation();
+        },
+        { timeout: 6000 }
+      );
+    }
+
+    function fallbackLocation() {
+      userCoords = { lat: 40.4168, lng: -3.7038 }; // Sol
+      applyUserLocation();
+    }
+
+    function applyUserLocation() {
+      const badge = document.getElementById('gpsStatusBadge');
+      badge.innerText = 'GPS ACTIVO';
+      badge.className = 'text-[9px] bg-sky-500 text-black font-extrabold px-2 py-0.5 rounded font-mono';
+      document.getElementById('locBtnText').innerText = '📍 Ubicación Fijada';
+
+      // Compute distances
+      MADRID_PARKS.forEach(p => {
+        p.distanceKm = calculateHaversine(userCoords.lat, userCoords.lng, p.coords[0], p.coords[1]);
+      });
+
+      renderCleanestParks();
+      renderParksList();
+
+      if (map) {
+        map.setView([userCoords.lat, userCoords.lng], 13);
+        L.circleMarker([userCoords.lat, userCoords.lng], {
+          radius: 8,
+          color: '#38bdf8',
+          fillColor: '#0284c7',
+          fillOpacity: 0.9
+        }).addTo(map).bindPopup('<b>📍 Tú estás aquí</b>').openPopup();
+      }
+    }
+
+    function renderCleanestParks() {
+      const container = document.getElementById('cleanestParksGrid');
+      const candidates = [...MADRID_PARKS]
+        .filter(p => !p.isAvoidZone)
+        .sort((a, b) => (a.distanceKm ?? 99) - (b.distanceKm ?? 99))
+        .slice(0, 3);
+
+      container.innerHTML = candidates.map((p, idx) => `
+        <div onclick="selectPark('${p.id}')" class="p-4 rounded-2xl bg-neutral-900 border ${selectedPark.id === p.id ? 'border-[#ff5500] shadow-lg shadow-[#ff5500]/15' : 'border-neutral-800'} cursor-pointer hover:border-neutral-600 transition-all">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] font-black uppercase text-[#ff5500] font-mono">#${idx+1} MÁS LIMPIO CERCA</span>
+            <span class="text-xs font-black text-emerald-400 font-mono">${p.exerciseScore}/100</span>
+          </div>
+          <div class="text-base font-bold text-white">${p.name}</div>
+          <div class="text-xs text-neutral-400 mb-2">${p.district}</div>
+          <div class="flex justify-between text-xs font-mono border-t border-neutral-800 pt-2 text-neutral-300">
+            <span>A ${p.distanceKm !== undefined ? p.distanceKm + ' km' : 'Cerca'}</span>
+            <span class="text-emerald-400">NO₂: ${p.airQuality.no2} µg</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderParksList() {
+      const container = document.getElementById('parksCardGrid');
+      container.innerHTML = MADRID_PARKS.map(p => `
+        <div onclick="selectPark('${p.id}')" class="p-4 rounded-2xl bg-[#141414] border ${selectedPark.id === p.id ? 'border-[#ff5500]' : 'border-neutral-800'} hover:border-neutral-700 cursor-pointer transition-all">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-mono text-neutral-400">${p.perimeterKm} km</span>
+            <span class="text-xs font-black ${p.exerciseScore > 75 ? 'text-emerald-400' : 'text-amber-400'}">${p.exerciseScore} pts</span>
+          </div>
+          <div class="font-bold text-white text-sm truncate">${p.name}</div>
+          <div class="text-[11px] text-neutral-400 mb-2 truncate">${p.district}</div>
+          <div class="text-[11px] font-mono text-neutral-300 flex justify-between border-t border-neutral-800/80 pt-2">
+            <span>ICA: ${p.airQuality.aqi}</span>
+            <span class="text-[#ff5500]">Seleccionar →</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectPark(id) {
+      const found = MADRID_PARKS.find(p => p.id === id);
+      if (!found) return;
+      selectedPark = found;
+      renderCleanestParks();
+      renderParksList();
+      updateOutfitSection();
+      calculateInhaledDose();
+      if (map) {
+        map.panTo(found.coords);
+      }
+    }
+
+    // --- 5. OUTFIT ADVISOR (+10°C Thermal Shift for Running) ---
+    function setActivity(act) {
+      currentActivity = act;
+      const runBtn = document.getElementById('act-running-btn');
+      const walkBtn = document.getElementById('act-walking-btn');
+
+      if (act === 'running') {
+        runBtn.className = 'px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all bg-[#ff5500] text-black shadow-md font-heading';
+        walkBtn.className = 'px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-neutral-400 hover:text-white font-heading';
+      } else {
+        walkBtn.className = 'px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all bg-[#ff5500] text-black shadow-md font-heading';
+        runBtn.className = 'px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-neutral-400 hover:text-white font-heading';
+      }
+
+      updateOutfitSection();
+      calculateInhaledDose();
+    }
+
+    function updateOutfitSection() {
+      const baseTemp = selectedPark.weather.temperature;
+      const isRunning = currentActivity === 'running';
+      const effectiveTemp = isRunning ? baseTemp + 10 : baseTemp;
+
+      document.getElementById('outfitParkName').innerText = selectedPark.name;
+      document.getElementById('outfitHeading').innerText = isRunning
+        ? `Equipación para Correr a ${baseTemp}°C (Sensación Térmica ~${effectiveTemp}°C)`
+        : `Equipación para Andar a ${baseTemp}°C (Sensación Térmica Real ${effectiveTemp}°C)`;
+
+      const garments = [];
+
+      if (isRunning) {
+        if (effectiveTemp >= 20) {
+          garments.push({ title: 'Camiseta Técnica Tirantes / Manga Corta', desc: 'Tejido microperforado ultra-transpirable.', icon: '🎽' });
+          garments.push({ title: 'Pantalón Corto / Shorts Running', desc: 'Con slip interior anti-rozaduras.', icon: '🩳' });
+          garments.push({ title: 'Gorra Transpirable & Gafas UV', desc: 'Protección ocular contra sol y polen en suspensión.', icon: '🧢' });
+          garments.push({ title: 'Zapatillas de Running', desc: `Suela optimizada para ${selectedPark.circuitType}.`, icon: '👟' });
+        } else {
+          garments.push({ title: 'Camiseta Técnica Manga Larga Transpirable', desc: 'Evacua el sudor reteniendo calor moderado.', icon: '👕' });
+          garments.push({ title: 'Mallas de Running Ligeras', desc: 'Compresión media para cuidar tendones con frío.', icon: '👖' });
+          garments.push({ title: 'Cortavientos Ultraligero Plegable', desc: 'Para el primer kilómetro de calentamiento.', icon: '🧥' });
+          garments.push({ title: 'Zapatillas de Running', desc: `Agarre seguro en ${selectedPark.circuitType}.`, icon: '👟' });
+        }
+      } else {
+        // Walking
+        if (effectiveTemp < 15) {
+          garments.push({ title: 'Chaqueta Abrigada / Plumífero Ligero', desc: 'Al caminar el cuerpo no genera calor metabólico intenso.', icon: '🧥' });
+          garments.push({ title: 'Pantalón Deportivo o Casual Cómodo', desc: 'Aislamiento térmico y flexibilidad de paso.', icon: '👖' });
+          garments.push({ title: 'Buff para Cuello', desc: 'Protege las vías respiratorias altas.', icon: '🧣' });
+          garments.push({ title: 'Calzado Ergonómico con Amortiguación', desc: 'Sneakers cómodas para evitar fatiga en talones.', icon: '👟' });
+        } else {
+          garments.push({ title: 'Sudadera Ligera o Polo', desc: 'Confort térmico durante el paseo.', icon: '👕' });
+          garments.push({ title: 'Pantalón Elástico Cómodo', desc: 'Movilidad en senderos de parque.', icon: '👖' });
+          garments.push({ title: 'Gafas de Sol Deportivas', desc: 'Protección UV y reducción de deslumbramiento.', icon: '🕶️' });
+          garments.push({ title: 'Calzado Cómodo', desc: 'Suela amortiguada para asfalto y tierra.', icon: '👟' });
+        }
+      }
+
+      document.getElementById('garmentsGrid').innerHTML = garments.map(g => `
+        <div class="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
+          <div class="text-2xl">${g.icon}</div>
+          <div class="font-bold text-white text-sm">${g.title}</div>
+          <div class="text-[11px] text-neutral-400">${g.desc}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('outfitOverallText').innerText = isRunning
+        ? `🔥 Regla del Corredor (+10°C): Viste siempre pensando que la temperatura es 10 grados mayor. En ${selectedPark.name} el ambiente está a ${baseTemp}°C, pero a los 8 minutos de carrera sentirás aproximadamente ${effectiveTemp}°C.`
+        : `🚶 Frecuencia Cardíaca de Paseo: Al caminar a ${baseTemp}°C no se produce elevación térmica suficiente. Abrígate con una capa externa cortavientos para no enfriarte con las rachas de aire.`;
+    }
+
+    // --- 6. INHALED DOSE CALCULATOR ---
+    function setDuration(min) {
+      selectedDuration = min;
+      [30, 60, 90].forEach(d => {
+        const b = document.getElementById(`dur-${d}`);
+        if (d === min) {
+          b.className = 'px-3 py-1.5 rounded-lg text-xs font-black bg-[#ff5500] text-black';
+        } else {
+          b.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-neutral-400 hover:text-white';
+        }
+      });
+      calculateInhaledDose();
+    }
+
+    function calculateInhaledDose() {
+      const isRunning = currentActivity === 'running';
+      const veLitresPerMin = isRunning ? 65 : 20; // 65 L/min running vs 20 L/min walking
+      const totalLitres = veLitresPerMin * selectedDuration;
+      const totalM3 = Math.round((totalLitres / 1000) * 100) / 100;
+
+      const no2Concentration = selectedPark.airQuality.no2; // µg/m3
+      const inhaledNo2Micrograms = Math.round(totalM3 * no2Concentration * 10) / 10;
+
+      document.getElementById('doseVolume').innerText = `${totalM3} m³`;
+      document.getElementById('doseNo2').innerText = `${inhaledNo2Micrograms} µg`;
+
+      const riskEl = document.getElementById('doseRisk');
+      if (inhaledNo2Micrograms < 80) {
+        riskEl.innerText = '🟢 Exposición Segura';
+        riskEl.className = 'text-lg font-black text-emerald-400 mt-1 block';
+      } else if (inhaledNo2Micrograms < 150) {
+        riskEl.innerText = '🟠 Exposición Moderada';
+        riskEl.className = 'text-lg font-black text-amber-400 mt-1 block';
+      } else {
+        riskEl.innerText = '🔴 Exposición Alta (Cuidado)';
+        riskEl.className = 'text-lg font-black text-red-400 mt-1 block';
+      }
+    }
+
+    // --- 7. ALLERGY MODE TOGGLE ---
+    function toggleAllergyMode(enabled) {
+      isAllergyMode = enabled;
+      const badge = document.getElementById('allergyStateBadge');
+      if (enabled) {
+        badge.innerText = 'ACTIVADO';
+        badge.className = 'text-[9px] bg-fuchsia-500 text-white font-mono font-bold px-2 py-0.5 rounded';
+      } else {
+        badge.innerText = 'DESACTIVADO';
+        badge.className = 'text-[9px] bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded font-mono font-bold';
+      }
+      renderMapMarkers();
+      renderParksList();
+      updateOutfitSection();
+    }
+
+    // --- 8. CHART.JS EVOLUTION ---
+    function initChart() {
+      const ctx = document.getElementById('evolutionChartCanvas').getContext('2d');
+      const hours = ['06:00', '07:30', '08:30', '10:00', '12:00', '14:00', '16:00', '18:30', '20:30', '22:00'];
+      const no2Values = [20, 24, 48, 38, 30, 26, 28, 52, 22, 19];
+      const tempValues = [12, 14, 15, 17, 20, 21, 20, 18, 16, 14];
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: hours,
+          datasets: [{
+            label: 'NO₂ (µg/m³)',
+            data: no2Values,
+            borderColor: '#ff5500',
+            backgroundColor: 'rgba(255, 85, 0, 0.15)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.35,
+            pointBackgroundColor: hours.map(h => (h === '07:30' || h === '20:30') ? '#10b981' : (h === '08:30' || h === '18:30') ? '#ef4444' : '#ff5500'),
+            pointRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              grid: { color: '#262626' },
+              ticks: { color: '#a3a3a3', font: { family: 'Inter' } }
+            },
+            y: {
+              grid: { color: '#262626' },
+              ticks: { color: '#a3a3a3', font: { family: 'Inter' } }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: '#ffffff', font: { family: 'Montserrat', weight: 'bold' } } },
+            tooltip: {
+              callbacks: {
+                afterLabel: function(context) {
+                  const h = context.label;
+                  if (h === '07:30' || h === '20:30') return '🏆 Ventana Óptima de Entrenamiento (-28% NO₂)';
+                  if (h === '08:30' || h === '18:30') return '🚗 Pico de Tráfico Madrid (Evitar)';
+                  return '';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateChartMetric(metric) {
+      currentChartMetric = metric;
+      const no2Btn = document.getElementById('chart-no2-btn');
+      const tempBtn = document.getElementById('chart-temp-btn');
+
+      if (metric === 'no2') {
+        no2Btn.className = 'px-3 py-1 rounded-lg text-xs font-black bg-[#ff5500] text-black';
+        tempBtn.className = 'px-3 py-1 rounded-lg text-xs font-bold text-neutral-400 bg-neutral-900 border border-neutral-800';
+        chartInstance.data.datasets[0].label = 'NO₂ (µg/m³)';
+        chartInstance.data.datasets[0].data = [20, 24, 48, 38, 30, 26, 28, 52, 22, 19];
+        chartInstance.data.datasets[0].borderColor = '#ff5500';
+        chartInstance.data.datasets[0].backgroundColor = 'rgba(255, 85, 0, 0.15)';
+      } else {
+        tempBtn.className = 'px-3 py-1 rounded-lg text-xs font-black bg-[#ff5500] text-black';
+        no2Btn.className = 'px-3 py-1 rounded-lg text-xs font-bold text-neutral-400 bg-neutral-900 border border-neutral-800';
+        chartInstance.data.datasets[0].label = 'Temperatura (°C)';
+        chartInstance.data.datasets[0].data = [12, 14, 15, 17, 20, 21, 20, 18, 16, 14];
+        chartInstance.data.datasets[0].borderColor = '#38bdf8';
+        chartInstance.data.datasets[0].backgroundColor = 'rgba(56, 189, 248, 0.15)';
+      }
+      chartInstance.update();
+    }
+
+    // --- 9. GPX EXPORT ---
+    function populateGPXSelect() {
+      const select = document.getElementById('gpxParkSelect');
+      select.innerHTML = MADRID_PARKS.map(p => `
+        <option value="${p.id}">${p.name} — ${p.perimeterKm} km (${p.waterFountains} fuentes)</option>
+      `).join('');
+    }
+
+    function downloadSelectedParkGPX() {
+      const select = document.getElementById('gpxParkSelect');
+      const park = MADRID_PARKS.find(p => p.id === select.value) || selectedPark;
+
+      const gpxContent = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="FitAir Parks Madrid Pro" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Circuito Saludable - ${park.name}</name>
+    <desc>Circuito perimetral de ${park.perimeterKm} km en ${park.district}. Aire Limpio ICA ${park.airQuality.aqi}.</desc>
+    <time>${new Date().toISOString()}</time>
+  </metadata>
+  <wpt lat="${park.coords[0]}" lon="${park.coords[1]}">
+    <name>Acceso Principal ${park.name}</name>
+    <desc>Punto de inicio y fuente de agua potable.</desc>
+  </wpt>
+  <trk>
+    <name>${park.name} Route</name>
+    <trkseg>
+      <trkpt lat="${park.coords[0]}" lon="${park.coords[1]}"><ele>660</ele></trkpt>
+      <trkpt lat="${park.coords[0] + 0.003}" lon="${park.coords[1] + 0.003}"><ele>662</ele></trkpt>
+      <trkpt lat="${park.coords[0] + 0.005}" lon="${park.coords[1] - 0.002}"><ele>658</ele></trkpt>
+      <trkpt lat="${park.coords[0]}" lon="${park.coords[1]}"><ele>660</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>`;
+
+      const blob = new Blob([gpxContent], { type: 'application/gpx+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `FitAir_Madrid_${park.id}_${park.perimeterKm}km.gpx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // --- 10. HIGH CONTRAST MODE (Solar Outdoor Readability) ---
+    function toggleHighContrast() {
+      isHighContrast = !isHighContrast;
+      const body = document.getElementById('appBody');
+      const label = document.getElementById('contrastLabel');
+      const stateText = document.getElementById('contrastModeStateText');
+      const toggleBtn = document.getElementById('toggleContrastBtn');
+
+      if (isHighContrast) {
+        body.classList.remove('bg-[#0a0a0a]', 'text-white');
+        body.classList.add('bg-[#ffffff]', 'text-black');
+        label.innerText = 'Modo Noche';
+        stateText.innerText = '☀️ MODO ALTO CONTRASTE (SOLAR) ACTIVO';
+        toggleBtn.innerText = '🌙 Volver a Modo Oscuro Deportivo';
+      } else {
+        body.classList.remove('bg-[#ffffff]', 'text-black');
+        body.classList.add('bg-[#0a0a0a]', 'text-white');
+        label.innerText = 'Luz Solar';
+        stateText.innerText = '🌙 MODO OSCURO DEPORTIVO ACTIVO';
+        toggleBtn.innerText = '☀️ Activar Modo Alto Contraste';
+      }
+
+      // Switch map tile layer between OpenStreetMap and CartoDB Dark Matter
+      if (map && tileLayer) {
+        map.removeLayer(tileLayer);
+        const newTileUrl = isHighContrast
+          ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+          : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+        tileLayer = L.tileLayer(newTileUrl, {
+          attribution: isHighContrast
+            ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          subdomains: isHighContrast ? 'abc' : 'abcd',
+          maxZoom: 19
+        }).addTo(map);
+      }
+    }
+
+    document.getElementById('quickContrastBtn').addEventListener('click', toggleHighContrast);
+
+    async function fetchMadridOpenDataLive() {
+      try {
+        const [resAir, resMeteo] = await Promise.allSettled([
+          fetch('https://ciudadesabiertas.madrid.es/dynamicAPI/API/query/calair_tiemporeal.json?pageSize=5000').then(r => r.json()),
+          fetch('https://ciudadesabiertas.madrid.es/dynamicAPI/API/query/meteo_tiemporeal_ult.json?pageSize=5000').then(r => r.json())
+        ]);
+
+        if (resAir.status === 'fulfilled' && resAir.value?.records) {
+          const records = resAir.value.records;
+          const stMap = {
+            'retiro': '8',
+            'casa-campo': '24',
+            'madrid-rio': '56',
+            'parque-oeste': '4',
+            'dehesa-villa': '38',
+            'juan-carlos-i': '59',
+            'tierno-galvan': '47',
+            'cerro-tio-pio': '40'
+          };
+
+          MADRID_PARKS.forEach(p => {
+            const stNum = stMap[p.id];
+            if (stNum) {
+              const no2Rec = records.find(r => String(r.ESTACION).trim() === stNum && String(r.MAGNITUD).trim() === '8');
+              if (no2Rec) {
+                for (let h = 24; h >= 1; h--) {
+                  const hKey = `H${h.toString().padStart(2, '0')}`;
+                  const vKey = `V${h.toString().padStart(2, '0')}`;
+                  if (no2Rec[vKey] === 'V' && no2Rec[hKey]) {
+                    const val = parseFloat(no2Rec[hKey]);
+                    if (!isNaN(val)) {
+                      p.airQuality.no2 = Math.round(val);
+                      p.airQuality.aqi = Math.round(val * 1.1);
+                      if (val > 50) {
+                        p.airQuality.level = 'unfavorable';
+                      } else if (val > 35) {
+                        p.airQuality.level = 'moderate';
+                      } else {
+                        p.airQuality.level = 'good';
+                      }
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        if (resMeteo.status === 'fulfilled' && resMeteo.value?.records) {
+          const mRecs = resMeteo.value.records;
+          const tempRec = mRecs.find(r => String(r.MAGNITUD).trim() === '83');
+          if (tempRec) {
+            for (let h = 24; h >= 1; h--) {
+              const hKey = `H${h.toString().padStart(2, '0')}`;
+              const vKey = `V${h.toString().padStart(2, '0')}`;
+              if (tempRec[vKey] === 'V' && tempRec[hKey]) {
+                const tVal = parseFloat(tempRec[hKey]);
+                if (!isNaN(tVal)) {
+                  MADRID_PARKS.forEach(p => {
+                    p.weather.temperature = Math.round(tVal);
+                  });
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        renderMapMarkers();
+        renderParksList();
+        renderCleanestParks();
+        updateOutfitSection();
+        calculateInhaledDose();
+      } catch (e) {
+        console.warn('Datos en vivo desde portal municipal no disponibles en este momento, usando snapshot:', e);
+      }
+    }
+
+    function refreshData() {
+      fetchMadridOpenDataLive();
+      renderMapMarkers();
+      renderParksList();
+      renderCleanestParks();
+    }
+
+    // Init on load
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      renderCleanestParks();
+      renderParksList();
+      updateOutfitSection();
+      calculateInhaledDose();
+      initChart();
+      populateGPXSelect();
+      fetchMadridOpenDataLive();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "FitAir Parks Madrid",
+  "description": "Monitor en tiempo real de la calidad del aire y meteorología en los parques de Madrid con recomendador inteligente de equipación para corredores y caminantes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
