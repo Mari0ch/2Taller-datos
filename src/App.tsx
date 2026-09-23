@@ -1,10 +1,13 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { ActivityType, MadridPark } from './types';
-import { fetchMadridParksData, SimulationParams } from './services/airQualityService';
+import React, { useEffect, useState, useMemo, Suspense, lazy, useCallback } from 'react';
+import { ActivityType, DataSourceStatus, MadridPark } from './types';
+import {
+  fetchMadridParksData,
+  getDataSourceStatus,
+  SimulationParams,
+} from './services/airQualityService';
 import { Navbar } from './components/Navbar';
 import { NavigationTabBar, TabId } from './components/NavigationTabBar';
 import { NearbyCleanestParks } from './components/NearbyCleanestParks';
-import { MapView } from './components/MapView';
 import { ParkCard } from './components/ParkCard';
 import { ParkFilters } from './components/ParkFilters';
 import { HighPollutionAlertPanel } from './components/HighPollutionAlertPanel';
@@ -12,11 +15,24 @@ import { AllergyModule } from './components/AllergyModule';
 import { ActivitySelector } from './components/ActivitySelector';
 import { OutfitAdvisorSection } from './components/OutfitAdvisorSection';
 import { InhaledDoseCalculator } from './components/InhaledDoseCalculator';
-import { HourlyPredictionTab } from './components/HourlyPredictionTab';
-import { ExportAndSettingsTab } from './components/ExportAndSettingsTab';
 import { ParkDetailModal } from './components/ParkDetailModal';
 import { SimulationControlsModal } from './components/SimulationControlsModal';
-import { AlertCircle, CheckCircle2, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, X } from 'lucide-react';
+
+// Lazy load heavy components to optimize bundle size (Leaflet, Chart.js, Export tab)
+const MapView = lazy(() =>
+  import('./components/MapView').then((m) => ({ default: m.MapView }))
+);
+const HourlyPredictionTab = lazy(() =>
+  import('./components/HourlyPredictionTab').then((m) => ({
+    default: m.HourlyPredictionTab,
+  }))
+);
+const ExportAndSettingsTab = lazy(() =>
+  import('./components/ExportAndSettingsTab').then((m) => ({
+    default: m.ExportAndSettingsTab,
+  }))
+);
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<TabId>('map');
@@ -28,6 +44,9 @@ export default function App() {
   const [detailModalPark, setDetailModalPark] = useState<MadridPark | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSimModalOpen, setIsSimModalOpen] = useState<boolean>(false);
+  const [dataSourceStatus, setDataSourceStatus] = useState<DataSourceStatus>(
+    getDataSourceStatus()
+  );
 
   // Geolocation State
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -49,41 +68,66 @@ export default function App() {
   });
 
   const isSimulating =
-    simParams.overrideTemp !== null ||
-    simParams.overrideRain !== null ||
-    simParams.overrideAqi !== null ||
-    simParams.overridePollen !== null;
+    simParams.overrideTemp !== null && simParams.overrideTemp !== undefined ||
+    simParams.overrideRain !== null && simParams.overrideRain !== undefined ||
+    simParams.overrideAqi !== null && simParams.overrideAqi !== undefined ||
+    simParams.overridePollen !== null && simParams.overridePollen !== undefined;
 
-  // Load data function
-  const loadData = async (
-    simOver?: SimulationParams,
-    allergyState?: boolean,
-    coords?: { lat: number; lng: number } | null
-  ) => {
-    setIsLoading(true);
-    try {
-      const mode = allergyState !== undefined ? allergyState : isAllergyMode;
-      const currentCoords = coords !== undefined ? coords : userLocation;
-      const data = await fetchMadridParksData(activity, simOver ?? simParams, mode, currentCoords);
-      setParks(data);
+  // Load data callback
+  const loadData = useCallback(
+    async (
+      simOver?: SimulationParams,
+      allergyState?: boolean,
+      coords?: { lat: number; lng: number } | null
+    ) => {
+      setIsLoading(true);
+      try {
+        const mode = allergyState !== undefined ? allergyState : isAllergyMode;
+        const currentCoords = coords !== undefined ? coords : userLocation;
+        const data = await fetchMadridParksData(activity, simOver ?? simParams, mode, currentCoords);
+        setParks(data);
+        setDataSourceStatus(getDataSourceStatus());
 
-      if (selectedPark) {
-        const found = data.find((p) => p.id === selectedPark.id);
-        if (found) setSelectedPark(found);
-      } else if (data.length > 0) {
-        setSelectedPark(data[0]);
+        if (selectedPark) {
+          const found = data.find((p) => p.id === selectedPark.id);
+          if (found) setSelectedPark(found);
+        } else if (data.length > 0) {
+          setSelectedPark(data[0]);
+        }
+      } catch (e) {
+        console.error('Error fetching Madrid parks data:', e);
+        setDataSourceStatus(getDataSourceStatus());
+      } finally {
+        setIsLoading(false);
       }
-    } catch (e) {
-      console.error('Error fetching Madrid parks data:', e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    [activity, simParams, isAllergyMode, userLocation, selectedPark]
+  );
 
-  // Initial load and on change
+  // Initial load
   useEffect(() => {
     loadData(simParams, isAllergyMode, userLocation);
   }, [activity, simParams, isAllergyMode]);
+
+  // Phase 1 requirement 6: Auto-refresh every 5 minutes and on visibilitychange
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadData(simParams, isAllergyMode, userLocation);
+    }, 5 * 60 * 1000); // 5 min
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadData(simParams, isAllergyMode, userLocation);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [loadData, simParams, isAllergyMode, userLocation]);
 
   // Request browser geolocation with fallback to Madrid center (Puerta del Sol)
   const handleRequestLocation = () => {
@@ -107,7 +151,9 @@ export default function App() {
         setUserLocation(coords);
         loadData(simParams, isAllergyMode, coords);
         setIsLocating(false);
-        setLocationToast('📍 Ubicación fijada. Calculadas distancias Haversine a los parques más limpios en 3 km.');
+        setLocationToast(
+          '📍 Ubicación fijada. Calculadas distancias Haversine a los parques más limpios en 3 km.'
+        );
         setTimeout(() => setLocationToast(null), 5000);
       },
       () => {
@@ -122,7 +168,7 @@ export default function App() {
     );
   };
 
-  // Filtered & Sorted Parks
+  // Filtered & Sorted Parks (Phase 2 & 3: handle null values properly)
   const filteredParks = useMemo(() => {
     let result = [...parks];
 
@@ -138,13 +184,13 @@ export default function App() {
     }
 
     if (selectedAptitude === 'optimo') {
-      result = result.filter((p) => p.exerciseScore >= 80 && !p.isHighPollutionZone);
+      result = result.filter((p) => p.exerciseScore !== null && p.exerciseScore >= 80 && !p.isHighPollutionZone);
     } else if (selectedAptitude === 'aceptable') {
       result = result.filter(
-        (p) => p.exerciseScore >= 50 && p.exerciseScore < 80 && !p.isHighPollutionZone
+        (p) => p.exerciseScore !== null && p.exerciseScore >= 50 && p.exerciseScore < 80 && !p.isHighPollutionZone
       );
     } else if (selectedAptitude === 'evitar') {
-      result = result.filter((p) => p.isHighPollutionZone || p.exerciseScore < 50);
+      result = result.filter((p) => p.isHighPollutionZone || (p.exerciseScore !== null && p.exerciseScore < 50));
     } else if (selectedAptitude === 'alergia-baja') {
       result = result.filter(
         (p) => p.pollenInfo.riskLevel === 'low' || p.pollenInfo.riskLevel === 'moderate'
@@ -161,12 +207,28 @@ export default function App() {
       if (sortBy === 'distance' && userLocation) {
         return (a.userDistanceKm ?? 99) - (b.userDistanceKm ?? 99);
       }
-      if (sortBy === 'score') return b.exerciseScore - a.exerciseScore;
-      if (sortBy === 'air') return a.airQuality.aqi - b.airQuality.aqi;
-      if (sortBy === 'pollen') return a.pollenInfo.pollenScore - b.pollenInfo.pollenScore;
-      if (sortBy === 'perimeter') return b.perimeterKm - a.perimeterKm;
-      if (sortBy === 'area') return b.areaHa - a.areaHa;
-      if (sortBy === 'name') return a.name.localeCompare(b.name);
+      if (sortBy === 'score') {
+        const scoreA = a.exerciseScore ?? -1;
+        const scoreB = b.exerciseScore ?? -1;
+        return scoreB - scoreA;
+      }
+      if (sortBy === 'air') {
+        const aqiA = a.airQuality.aqi ?? 999;
+        const aqiB = b.airQuality.aqi ?? 999;
+        return aqiA - aqiB;
+      }
+      if (sortBy === 'pollen') {
+        return a.pollenInfo.pollenScore - b.pollenInfo.pollenScore;
+      }
+      if (sortBy === 'perimeter') {
+        return b.perimeterKm - a.perimeterKm;
+      }
+      if (sortBy === 'area') {
+        return b.areaHa - a.areaHa;
+      }
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      }
       return 0;
     });
 
@@ -199,6 +261,7 @@ export default function App() {
         isSimulating={isSimulating}
         isHighContrast={isHighContrast}
         onToggleHighContrast={() => setIsHighContrast(!isHighContrast)}
+        dataSourceStatus={dataSourceStatus}
       />
 
       {/* FIXED 5-TAB BAR NAVIGATION (Desktop Sticky & Mobile Fixed Bar) */}
@@ -235,14 +298,22 @@ export default function App() {
           <div className="p-3.5 rounded-2xl bg-[#ff5500]/10 border border-[#ff5500]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2.5">
               <span className="w-2 h-2 rounded-full bg-[#ff5500] animate-pulse"></span>
-              <span className="text-[#ff5500] font-bold uppercase tracking-wider">
-                Simulación Forzada Activa:
+              <span className="text-[#ff5500] font-bold uppercase tracking-wider font-mono">
+                SIMULACIÓN ACTIVA:
               </span>
               <span className="text-neutral-200">
-                {simParams.overrideTemp !== null && `Temp: ${simParams.overrideTemp}°C • `}
-                {simParams.overrideRain !== null && (simParams.overrideRain ? 'Lluvia activada • ' : 'Seco • ')}
-                {simParams.overrideAqi !== null && `Aire: ${simParams.overrideAqi} • `}
-                {simParams.overridePollen !== null && `Polen: ${simParams.overridePollen}`}
+                {simParams.overrideTemp !== null &&
+                  simParams.overrideTemp !== undefined &&
+                  `Temp: ${simParams.overrideTemp}°C • `}
+                {simParams.overrideRain !== null &&
+                  simParams.overrideRain !== undefined &&
+                  (simParams.overrideRain ? 'Lluvia activada • ' : 'Seco • ')}
+                {simParams.overrideAqi !== null &&
+                  simParams.overrideAqi !== undefined &&
+                  `Aire: ${simParams.overrideAqi} • `}
+                {simParams.overridePollen !== null &&
+                  simParams.overridePollen !== undefined &&
+                  `Polen: ${simParams.overridePollen}`}
               </span>
             </div>
             <button
@@ -270,19 +341,27 @@ export default function App() {
               isHighContrast={isHighContrast}
             />
 
-            {/* Interactive Leaflet Map View */}
+            {/* Interactive Leaflet Map View (Lazy Loaded) */}
             <div className="space-y-3">
-              <MapView
-                parks={filteredParks}
-                selectedPark={selectedPark}
-                onSelectPark={(p) => setSelectedPark(p)}
-                activity={activity}
-                isAllergyMode={isAllergyMode}
-                userLocation={userLocation}
-                onRequestLocation={handleRequestLocation}
-                isLocating={isLocating}
-                isHighContrast={isHighContrast}
-              />
+              <Suspense
+                fallback={
+                  <div className="w-full h-[420px] rounded-3xl bg-neutral-950 border border-neutral-800 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 text-[#ff5500] animate-spin" />
+                  </div>
+                }
+              >
+                <MapView
+                  parks={filteredParks}
+                  selectedPark={selectedPark}
+                  onSelectPark={(p) => setSelectedPark(p)}
+                  activity={activity}
+                  isAllergyMode={isAllergyMode}
+                  userLocation={userLocation}
+                  onRequestLocation={handleRequestLocation}
+                  isLocating={isLocating}
+                  isHighContrast={isHighContrast}
+                />
+              </Suspense>
             </div>
 
             {/* Filters & Park Cards */}
@@ -329,6 +408,7 @@ export default function App() {
                     onClick={() => {
                       setSearchQuery('');
                       setSelectedAptitude('all');
+                      setSelectedSurface('all');
                     }}
                     className="px-4 py-2 bg-[#ff5500] text-black text-xs font-extrabold rounded-xl cursor-pointer"
                   >
@@ -408,12 +488,20 @@ export default function App() {
         ========================================================================= */}
         {currentTab === 'hourly' && (
           <div className="space-y-6 animate-fade-in">
-            <HourlyPredictionTab
-              selectedPark={selectedPark}
-              parks={parks}
-              onSelectPark={(p) => setSelectedPark(p)}
-              isHighContrast={isHighContrast}
-            />
+            <Suspense
+              fallback={
+                <div className="w-full h-80 rounded-3xl bg-neutral-950 border border-neutral-800 flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-[#ff5500] animate-spin" />
+                </div>
+              }
+            >
+              <HourlyPredictionTab
+                selectedPark={selectedPark}
+                parks={parks}
+                onSelectPark={(p) => setSelectedPark(p)}
+                isHighContrast={isHighContrast}
+              />
+            </Suspense>
           </div>
         )}
 
@@ -422,20 +510,28 @@ export default function App() {
         ========================================================================= */}
         {currentTab === 'settings' && (
           <div className="space-y-6 animate-fade-in">
-            <ExportAndSettingsTab
-              parks={parks}
-              selectedPark={selectedPark}
-              onSelectPark={(p) => setSelectedPark(p)}
-              isHighContrast={isHighContrast}
-              onToggleHighContrast={() => setIsHighContrast(!isHighContrast)}
-              simParams={simParams}
-              onUpdateSimParams={(params) => {
-                setSimParams(params);
-                loadData(params, isAllergyMode, userLocation);
-              }}
-              onResetSimParams={handleResetSimulation}
-              onRefreshData={() => loadData(simParams, isAllergyMode, userLocation)}
-            />
+            <Suspense
+              fallback={
+                <div className="w-full h-80 rounded-3xl bg-neutral-950 border border-neutral-800 flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-[#ff5500] animate-spin" />
+                </div>
+              }
+            >
+              <ExportAndSettingsTab
+                parks={parks}
+                selectedPark={selectedPark}
+                onSelectPark={(p) => setSelectedPark(p)}
+                isHighContrast={isHighContrast}
+                onToggleHighContrast={() => setIsHighContrast(!isHighContrast)}
+                simParams={simParams}
+                onUpdateSimParams={(params) => {
+                  setSimParams(params);
+                  loadData(params, isAllergyMode, userLocation);
+                }}
+                onResetSimParams={handleResetSimulation}
+                onRefreshData={() => loadData(simParams, isAllergyMode, userLocation)}
+              />
+            </Suspense>
           </div>
         )}
       </main>
@@ -480,8 +576,8 @@ export default function App() {
       <SimulationControlsModal
         isOpen={isSimModalOpen}
         onClose={() => setIsSimModalOpen(false)}
-        simulationParams={simParams}
-        onUpdateParams={(p) => {
+        simParams={simParams}
+        onUpdateSimParams={(p) => {
           setSimParams(p);
           loadData(p, isAllergyMode, userLocation);
         }}

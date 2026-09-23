@@ -1,6 +1,6 @@
 import React from 'react';
 import { MadridPark } from '../types';
-import { Navigation, Sparkles, Wind, Trophy, ArrowRight, ShieldCheck, Check } from 'lucide-react';
+import { Navigation, Trophy, ArrowRight, ShieldCheck, Check } from 'lucide-react';
 
 interface NearbyCleanestParksProps {
   parks: MadridPark[];
@@ -31,13 +31,14 @@ export const NearbyCleanestParks: React.FC<NearbyCleanestParksProps> = ({
       .sort((a, b) => {
         const distA = a.userDistanceKm ?? 99;
         const distB = b.userDistanceKm ?? 99;
-        // Prioritize parks within 5km that have exercise score >= 70
         return distA - distB;
       })
       .slice(0, 3);
   } else {
-    // Default top 3 healthiest overall
-    top3 = [...candidates].sort((a, b) => b.exerciseScore - a.exerciseScore).slice(0, 3);
+    // Default top 3 healthiest overall (handle nullable score)
+    top3 = [...candidates]
+      .sort((a, b) => (b.exerciseScore ?? -1) - (a.exerciseScore ?? -1))
+      .slice(0, 3);
   }
 
   return (
@@ -98,56 +99,49 @@ export const NearbyCleanestParks: React.FC<NearbyCleanestParksProps> = ({
                 isSelected
                   ? 'border-[#ff5500] bg-[#ff5500]/10 shadow-lg shadow-[#ff5500]/10'
                   : isHighContrast
-                  ? 'bg-neutral-50 border-neutral-300 hover:border-black'
-                  : 'bg-neutral-900/90 border-neutral-800 hover:border-neutral-700'
+                  ? 'border-neutral-200 bg-neutral-50 hover:border-black'
+                  : 'border-neutral-800 bg-neutral-900/60 hover:border-neutral-700 hover:bg-neutral-900'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-[#ff5500] bg-[#ff5500]/15 px-2 py-0.5 rounded border border-[#ff5500]/30 font-mono">
+                  <span className="text-[10px] font-extrabold text-[#ff5500] uppercase tracking-wider font-mono">
                     #{index + 1} RECOMENDADO
                   </span>
-                  <div className="flex items-center gap-1 text-emerald-400 text-xs font-black">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>{park.exerciseScore}/100</span>
-                  </div>
+                  {park.userDistanceKm !== undefined && (
+                    <span className="text-[11px] font-mono font-bold text-sky-400 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-800/60">
+                      A {park.userDistanceKm} km
+                    </span>
+                  )}
                 </div>
 
-                <h4 className="text-base font-bold text-white mb-1 group-hover:text-[#ff5500]">
-                  {park.name}
-                </h4>
+                <h4 className="text-base font-bold text-white mb-1">{park.name}</h4>
                 <p className="text-xs text-neutral-400 mb-3">{park.district}</p>
 
-                <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                  <div className="p-2 rounded-xl bg-black/60 border border-neutral-800">
-                    <span className="text-[9px] text-neutral-400 uppercase font-bold block">
-                      Calidad Aire
-                    </span>
-                    <span className="font-mono font-bold text-emerald-400">
-                      ICA {park.airQuality.aqi} • {park.airQuality.no2} µg NO₂
+                {/* Score & Air Stats */}
+                <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-black/60 border border-neutral-800/80 mb-3 text-xs">
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase block">Aptitud</span>
+                    <span className="font-extrabold text-emerald-400 font-mono text-sm">
+                      {park.exerciseScore !== null ? `${park.exerciseScore}/100` : 'Sin datos'}
                     </span>
                   </div>
-
-                  <div className="p-2 rounded-xl bg-black/60 border border-neutral-800">
-                    <span className="text-[9px] text-neutral-400 uppercase font-bold block">
-                      Distancia GPS
-                    </span>
-                    <span className="font-mono font-bold text-sky-400">
-                      {park.userDistanceKm !== undefined
-                        ? `${park.userDistanceKm} km`
-                        : 'Calcular GPS'}
+                  <div>
+                    <span className="text-[10px] text-neutral-400 uppercase block">Índice EEA</span>
+                    <span className="font-bold text-white font-mono text-sm">
+                      {park.airQuality.aqi !== null ? park.airQuality.aqi : 'Sin datos'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-neutral-800/80 text-xs">
-                <span className="text-[11px] text-neutral-400">
-                  Circuito: <strong className="text-white">{park.perimeterKm} km</strong>
+              <div className="pt-2 border-t border-neutral-800 flex items-center justify-between text-xs">
+                <span className="text-[11px] text-neutral-400 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  {park.airQuality.levelLabel.split('/')[0]}
                 </span>
-                <span className="flex items-center gap-1 font-bold text-[#ff5500] text-xs">
-                  {isSelected ? 'Seleccionado' : 'Ver en mapa'}
-                  <ArrowRight className="w-3 h-3" />
+                <span className="text-[#ff5500] font-bold flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
+                  Ver circuito <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </div>
             </div>

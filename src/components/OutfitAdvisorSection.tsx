@@ -30,9 +30,11 @@ export const OutfitAdvisorSection: React.FC<OutfitAdvisorSectionProps> = ({
   activity,
   isAllergyMode,
 }) => {
-  const currentTemp = selectedPark ? selectedPark.weather.temperature : 16;
+  const currentTemp = selectedPark ? selectedPark.weather.temperature : null;
   const isRaining = selectedPark ? selectedPark.weather.isRaining : false;
-  const windSpeed = selectedPark ? selectedPark.weather.windSpeed : 12;
+  const windSpeed = (selectedPark?.weather.windSpeed !== null && selectedPark?.weather.windSpeed !== undefined)
+    ? selectedPark.weather.windSpeed
+    : 10;
 
   const outfit = calculateOutfit(activity, currentTemp, isRaining, windSpeed, isAllergyMode);
   const isRunning = activity === 'running';

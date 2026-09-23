@@ -1,17 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { MadridPark } from '../types';
 import { BestTimeAndEvolutionChart } from './BestTimeAndEvolutionChart';
 import {
   Clock,
   TrendingDown,
   ShieldAlert,
-  Sun,
-  Moon,
   Sparkles,
   Zap,
   CheckCircle2,
-  Calendar,
-  AlertTriangle,
+  Info,
 } from 'lucide-react';
 
 interface HourlyPredictionTabProps {
@@ -30,39 +27,18 @@ export const HourlyPredictionTab: React.FC<HourlyPredictionTabProps> = ({
   const park = selectedPark || parks[0];
   const hourlyData = park?.hourlyEvolution || [];
 
-  // Window insights
-  const morningGolden = hourlyData.find((h) => h.hour === '07:30') || {
-    hour: '07:30',
-    no2: 24,
-    aqi: 32,
-    temperature: 14,
-    note: '🏆 Ventana Oro Mañana',
-  };
-  const eveningGolden = hourlyData.find((h) => h.hour === '20:30') || {
-    hour: '20:30',
-    no2: 22,
-    aqi: 28,
-    temperature: 17,
-    note: '🏆 Ventana Oro Noche',
-  };
-  const morningPeak = hourlyData.find((h) => h.hour === '08:30') || {
-    hour: '08:30',
-    no2: 46,
-    aqi: 65,
-    temperature: 16,
-    note: '🚗 Pico Tráfico Matinal',
-  };
-  const eveningPeak = hourlyData.find((h) => h.hour === '18:30') || {
-    hour: '18:30',
-    no2: 48,
-    aqi: 68,
-    temperature: 20,
-    note: '🚗 Pico Tráfico Tarde',
-  };
-
-  const reductionPercent = Math.round(
-    ((eveningPeak.no2 - eveningGolden.no2) / (eveningPeak.no2 || 1)) * 100
+  // Filter valid data points
+  const validPoints = hourlyData.filter(
+    (d): d is typeof d & { no2: number } => d.no2 !== null && typeof d.no2 === 'number'
   );
+
+  const bestHour = [...validPoints].sort((a, b) => a.no2 - b.no2)[0] || null;
+  const worstHour = [...validPoints].sort((a, b) => b.no2 - a.no2)[0] || null;
+
+  const reductionPercent =
+    worstHour && bestHour && worstHour.no2 > 0
+      ? Math.round(((worstHour.no2 - bestHour.no2) / worstHour.no2) * 100)
+      : null;
 
   return (
     <div className="space-y-6">
@@ -82,11 +58,11 @@ export const HourlyPredictionTab: React.FC<HourlyPredictionTabProps> = ({
                   <Sparkles className="w-4 h-4" />
                 </span>
                 <span className="text-[11px] font-black uppercase tracking-widest text-emerald-400 font-['Montserrat',sans-serif]">
-                  INTELIGENCIA DEPORTIVA & CALIDAD DEL AIRE
+                  TELEMETRÍA REAL POR HORAS
                 </span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight font-['Montserrat',sans-serif]">
-                Predicción Horaria & Ventanas Óptimas de Entrenamiento
+                Evolución Horaria & Ventanas Óptimas de Entrenamiento
               </h2>
             </div>
 
@@ -107,182 +83,77 @@ export const HourlyPredictionTab: React.FC<HourlyPredictionTabProps> = ({
               >
                 {parks.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} ({p.district})
+                    {p.name}
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
-          {/* Golden Window Highlights */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {/* Window 1 */}
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
-                  🏆 Ventana Oro Noche (N.º 1)
-                </span>
-                <Moon className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div className="text-2xl font-black font-mono text-white">20:30 - 22:30 h</div>
-              <p className="text-xs text-neutral-300 mt-1">
-                La polución cae un <strong className="text-emerald-400">-{reductionPercent}%</strong>{' '}
-                tras el pico del tráfico vespertino.
-              </p>
-              <div className="mt-2 text-[11px] font-mono text-emerald-300 font-bold">
-                NO₂: ~{eveningGolden.no2} µg/m³ • {eveningGolden.temperature}°C
-              </div>
-            </div>
-
-            {/* Window 2 */}
-            <div className="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/30">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-400">
-                  🌅 Ventana Oro Mañana (N.º 2)
-                </span>
-                <Sun className="w-4 h-4 text-sky-400" />
-              </div>
-              <div className="text-2xl font-black font-mono text-white">06:30 - 08:00 h</div>
-              <p className="text-xs text-neutral-300 mt-1">
-                Aire limpio nocturno antes de la apertura masiva de centros laborales.
-              </p>
-              <div className="mt-2 text-[11px] font-mono text-sky-300 font-bold">
-                NO₂: ~{morningGolden.no2} µg/m³ • {morningGolden.temperature}°C
-              </div>
-            </div>
-
-            {/* Peak 1 */}
-            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400">
-                  ⚠️ Pico Crítico Tarde (Evitar)
-                </span>
-                <AlertTriangle className="w-4 h-4 text-red-400" />
-              </div>
-              <div className="text-2xl font-black font-mono text-white">18:30 - 20:00 h</div>
-              <p className="text-xs text-neutral-300 mt-1">
-                Colapso en salidas M-30 y arterias limítrofes con acumulación de NO₂.
-              </p>
-              <div className="mt-2 text-[11px] font-mono text-red-300 font-bold">
-                Pico NO₂: ~{eveningPeak.no2} µg/m³
-              </div>
-            </div>
-
-            {/* Peak 2 */}
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400">
-                  🚗 Pico Crítico Mañana (Evitar)
-                </span>
-                <ShieldAlert className="w-4 h-4 text-amber-400" />
-              </div>
-              <div className="text-2xl font-black font-mono text-white">08:15 - 09:45 h</div>
-              <p className="text-xs text-neutral-300 mt-1">
-                Hora punta laboral y escolar en Madrid con mayor emisión de partículas.
-              </p>
-              <div className="mt-2 text-[11px] font-mono text-amber-300 font-bold">
-                Pico NO₂: ~{morningPeak.no2} µg/m³
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Interactive Chart Component */}
-      <BestTimeAndEvolutionChart selectedPark={park} isHighContrast={isHighContrast} />
-
-      {/* Hourly Breakdown Details Table */}
-      <div
-        className={`rounded-3xl p-5 sm:p-6 border transition-all ${
-          isHighContrast
-            ? 'bg-white border-black text-black shadow-lg'
-            : 'bg-[#121212] border-neutral-850 text-white shadow-xl'
-        }`}
-      >
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-neutral-800">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-[#ff5500]" />
-            <h3 className="text-lg font-black tracking-tight font-['Montserrat',sans-serif]">
-              Desglose Horario Detallado en {park.name}
-            </h3>
-          </div>
-          <span className="text-[11px] text-neutral-400 font-mono">
-            Estación: {park.airQuality.stationName}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {hourlyData.map((slot) => {
-            const isWindow = slot.isOptimalWindow;
-            const isPeak = slot.note.includes('Pico');
-
-            return (
-              <div
-                key={slot.hour}
-                className={`p-3.5 rounded-2xl border transition-all ${
-                  isWindow
-                    ? 'bg-emerald-500/10 border-emerald-500/40 text-white'
-                    : isPeak
-                    ? 'bg-red-500/10 border-red-500/30 text-white'
-                    : isHighContrast
-                    ? 'bg-neutral-50 border-neutral-300 text-black'
-                    : 'bg-neutral-900 border-neutral-800 text-neutral-200'
-                }`}
-              >
+          {/* Cards for Optimal & Critical Windows */}
+          {bestHour && worstHour ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Best Window Card */}
+              <div className="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-500/40">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-base font-extrabold text-white">
-                    {slot.hour} h
+                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-900/60 px-2 py-0.5 rounded">
+                    HORA MÁS LIMPIA REGISTRADA
                   </span>
-                  <span
-                    className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                      isWindow
-                        ? 'bg-emerald-500 text-black'
-                        : isPeak
-                        ? 'bg-red-500 text-white'
-                        : 'bg-neutral-800 text-neutral-300'
-                    }`}
-                  >
-                    {slot.note}
+                  <span className="text-xs font-mono font-bold text-white">{bestHour.hour} h</span>
+                </div>
+                <div className="text-2xl font-black text-white font-mono mb-1">
+                  {bestHour.no2} µg/m³
+                </div>
+                <p className="text-xs text-emerald-200/90 leading-relaxed">
+                  Mínima concentración de NO₂ del día registrada en la estación. Ideal para carrera o caminata.
+                </p>
+              </div>
+
+              {/* Peak Window Card */}
+              <div className="p-4 rounded-2xl bg-red-950/60 border border-red-500/40">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono font-bold text-red-400 bg-red-900/60 px-2 py-0.5 rounded">
+                    PICO MÁXIMO DE POLUCIÓN
                   </span>
+                  <span className="text-xs font-mono font-bold text-white">{worstHour.hour} h</span>
                 </div>
-
-                <div className="grid grid-cols-3 gap-2 text-xs font-mono mb-2">
-                  <div>
-                    <span className="text-[9px] text-neutral-400 block">NO₂</span>
-                    <span
-                      className={`font-bold ${
-                        slot.no2 > 40
-                          ? 'text-red-400'
-                          : slot.no2 > 25
-                          ? 'text-[#ff5500]'
-                          : 'text-emerald-400'
-                      }`}
-                    >
-                      {slot.no2} µg
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-neutral-400 block">ICA</span>
-                    <span className="font-bold text-neutral-300">{slot.aqi}</span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-neutral-400 block">Temp</span>
-                    <span className="font-bold text-sky-400">{slot.temperature}°C</span>
-                  </div>
+                <div className="text-2xl font-black text-white font-mono mb-1">
+                  {worstHour.no2} µg/m³
                 </div>
+                <p className="text-xs text-red-200/90 leading-relaxed">
+                  Pico de emisiones por tráfico vehicular. Se aconseja no realizar entrenamientos intensos en esta franja.
+                </p>
+              </div>
 
-                <div className="text-[11px] text-neutral-400">
-                  {isWindow
-                    ? '🟢 Franja recomendada: ventilación pulmonar limpia y menor estrés oxidativo.'
-                    : isPeak
-                    ? '🔴 Franja no aconsejada: alta densidad de partículas en suspensión.'
-                    : '⚪ Condiciones intermedias aptas para trote suave o caminata.'}
+              {/* Inhaled Reduction Stat */}
+              <div className="p-4 rounded-2xl bg-sky-950/60 border border-sky-500/40 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5 text-sky-400 text-xs font-bold mb-1">
+                    <TrendingDown className="w-4 h-4" />
+                    <span>Beneficio Pulmonar</span>
+                  </div>
+                  <div className="text-3xl font-black text-white font-mono">
+                    -{reductionPercent ?? 0}%
+                  </div>
+                  <p className="text-xs text-sky-200/90 mt-1 leading-relaxed">
+                    Menor dosis de dióxido de nitrógeno inhalado entrenando a las {bestHour.hour} h en comparación con las {worstHour.hour} h.
+                  </p>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 flex items-center gap-3">
+              <Info className="w-5 h-5 text-neutral-400 shrink-0" />
+              <p className="text-xs text-neutral-300">
+                Las estaciones automáticas del Ayuntamiento de Madrid están acumulando registros para la jornada de hoy. A medida que se validen marcas H01..H24 se generará el comparativo horaria automáticamente.
+              </p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Main Interactive Chart */}
+      <BestTimeAndEvolutionChart selectedPark={park} isHighContrast={isHighContrast} />
     </div>
   );
 };

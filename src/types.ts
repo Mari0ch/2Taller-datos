@@ -1,32 +1,50 @@
 export type ActivityType = 'running' | 'walking';
 
-export type AirQualityLevel = 'good' | 'moderate' | 'unfavorable';
+export type AirQualityLevel =
+  | 'good'
+  | 'fair'
+  | 'moderate'
+  | 'poor'
+  | 'unfavorable'
+  | 'very_poor'
+  | 'extremely_poor'
+  | 'no_data';
 
 export type PollenRiskLevel = 'low' | 'moderate' | 'high' | 'extreme';
 
 export interface AirPollutionData {
-  aqi: number; // 0 - 200+ (ICA europeo / nacional)
+  aqi: number | null; // European Air Quality Index normalized score or null
+  eeaBand?: number | null; // 1 (Muy bueno) to 6 (Extremadamente desfavorable)
   level: AirQualityLevel;
   levelLabel: string;
-  no2: number; // µg/m³
-  pm10: number; // µg/m³
-  pm25: number; // µg/m³
-  o3?: number; // µg/m³
+  no2: number | null; // µg/m³
+  pm10: number | null; // µg/m³
+  pm25: number | null; // µg/m³
+  o3?: number | null; // µg/m³
+  so2?: number | null; // µg/m³
   stationName: string;
   stationCode: string;
-  lastUpdated: string;
+  lastUpdated: string | null; // Real measurement hour or timestamp
+  isEstimatedFallback?: boolean;
+  fallbackStationName?: string;
+  dominantPollutant?: string | null;
+  pm25StationName?: string;
+  pm10StationName?: string;
 }
 
 export interface WeatherData {
-  temperature: number; // °C
-  apparentTemperature: number; // Sensación térmica base (°C)
-  humidity: number; // %
-  windSpeed: number; // km/h
+  temperature: number | null; // °C
+  apparentTemperature: number | null; // Steadman formula (°C)
+  humidity: number | null; // %
+  windSpeed: number | null; // km/h
   isRaining: boolean;
   rainIntensity?: 'none' | 'light' | 'moderate' | 'heavy';
-  precipitationProbability: number; // %
+  precipitationProbability?: number | null; // %
   weatherDescription: string;
-  weatherCode: number;
+  weatherCode?: number | null;
+  stationName?: string;
+  stationDistanceKm?: number;
+  lastUpdated?: string | null;
 }
 
 export interface PollenData {
@@ -34,8 +52,9 @@ export interface PollenData {
   riskLabel: string;
   pollenScore: number; // 0 - 100
   dominantSpecies: string[]; // ej. ['Plátano de sombra', 'Arizónica']
-  dispersionFactor: string; // ej. 'Alta dispersión por viento > 20 km/h y baja humedad'
+  dispersionFactor: string;
   allergyAdvice: string;
+  isBotanicalEstimation: boolean; // Identifies botanical estimation vs direct clinical counter
 }
 
 export interface MadridPark {
@@ -55,23 +74,39 @@ export interface MadridPark {
   airQuality: AirPollutionData;
   weather: WeatherData;
   pollenInfo: PollenData;
-  exerciseScore: number; // 0 - 100
-  exerciseRecommendation: 'Óptimo' | 'Aceptable' | 'Precaución' | 'Desfavorable';
+  exerciseScore: number | null; // 0 - 100 or null if air quality data is missing
+  exerciseRecommendation: 'Óptimo' | 'Aceptable' | 'Precaución' | 'Desfavorable' | 'No disponible';
   suitabilityReason: string;
-  isHighPollutionZone: boolean; // True si está entre las 3 zonas con peores índices de Madrid
+  isHighPollutionZone: boolean;
   pollutionPeakReason?: string;
   allergenicFlora: string[];
-  stationDistanceKm?: number; // Distance in km to monitoring station via Haversine
-  userDistanceKm?: number; // Distance in km to user location via Haversine
-  perimeterCoordinates?: [number, number][]; // GPS coordinates for GPX export & trail rendering
+  stationDistanceKm?: number;
+  userDistanceKm?: number;
+  perimeterCoordinates?: [number, number][] | null;
+  hasRealGeometry?: boolean;
   hourlyEvolution?: {
     hour: string;
-    no2: number;
-    aqi: number;
-    temperature: number;
+    no2: number | null;
+    aqi: number | null;
+    temperature: number | null;
     isOptimalWindow: boolean;
     note: string;
   }[];
+  isSimulation?: boolean;
+}
+
+export interface DataSourceStatus {
+  status: 'live' | 'stale' | 'error' | 'loading';
+  statusLabel?: string;
+  fetchedAt?: Date | string | null;
+  lastFetchedAt?: string | null;
+  minutesAgo?: number;
+  dataTimestamp?: string | null;
+  isSimulation?: boolean;
+  airStatus?: 'live' | 'stale' | 'error';
+  meteoStatus?: 'live' | 'stale' | 'error';
+  parksStatus?: 'live' | 'stale' | 'error';
+  source?: string;
 }
 
 export interface GarmentRecommendation {
@@ -86,8 +121,8 @@ export interface GarmentRecommendation {
 
 export interface OutfitRecommendation {
   activity: ActivityType;
-  temperature: number;
-  perceivedEffortTemp: number; // Temp + 10°C for running, Temp for walking
+  temperature: number | null;
+  perceivedEffortTemp: number | null; // Temp + 10°C for running, Temp for walking
   isRaining: boolean;
   isAllergyMode: boolean;
   summaryRule: string;

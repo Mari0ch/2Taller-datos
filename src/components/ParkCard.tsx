@@ -14,6 +14,7 @@ import {
   XCircle,
   Ban,
   Sparkles,
+  HelpCircle,
 } from 'lucide-react';
 
 interface ParkCardProps {
@@ -38,7 +39,11 @@ export const ParkCard: React.FC<ParkCardProps> = ({
   let scoreBarColor = 'bg-emerald-500';
   let RecommendationIcon = CheckCircle;
 
-  if (park.isHighPollutionZone || park.exerciseScore < 50) {
+  if (park.exerciseScore === null) {
+    scoreBadgeColor = 'bg-neutral-800 text-neutral-400 border-neutral-700';
+    scoreBarColor = 'bg-neutral-700';
+    RecommendationIcon = HelpCircle;
+  } else if (park.isHighPollutionZone || park.exerciseScore < 50) {
     scoreBadgeColor = 'bg-red-500/15 text-red-400 border-red-500/30';
     scoreBarColor = 'bg-red-500';
     RecommendationIcon = XCircle;
@@ -50,7 +55,14 @@ export const ParkCard: React.FC<ParkCardProps> = ({
 
   // ICA color
   let aqiBadgeColor = 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60';
-  if (park.airQuality.level === 'unfavorable') {
+  if (park.airQuality.level === 'no_data') {
+    aqiBadgeColor = 'bg-neutral-900 text-neutral-400 border-neutral-800';
+  } else if (
+    park.airQuality.level === 'poor' ||
+    park.airQuality.level === 'very_poor' ||
+    park.airQuality.level === 'extremely_poor' ||
+    park.airQuality.level === 'unfavorable'
+  ) {
     aqiBadgeColor = 'bg-red-950/60 text-red-300 border-red-800/60';
   } else if (park.airQuality.level === 'moderate') {
     aqiBadgeColor = 'bg-orange-950/60 text-[#ff8800] border-orange-800/60';
@@ -75,7 +87,16 @@ export const ParkCard: React.FC<ParkCardProps> = ({
           <span className="flex items-center gap-1.5">
             <Ban className="w-3 h-3" /> ZONA A EVITAR (PICO DE POLUCIÓN)
           </span>
-          <span className="font-mono">NO₂ {park.airQuality.no2} µg/m³</span>
+          <span className="font-mono">
+            {park.airQuality.no2 !== null ? `NO₂ ${park.airQuality.no2} µg/m³` : 'Alerta sensor'}
+          </span>
+        </div>
+      )}
+
+      {/* Simulation Badge if active */}
+      {park.isSimulation && !park.isHighPollutionZone && (
+        <div className="absolute top-0 right-0 bg-[#ff5500] text-black text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-bl-lg font-mono">
+          SIMULACIÓN
         </div>
       )}
 
@@ -108,7 +129,7 @@ export const ParkCard: React.FC<ParkCardProps> = ({
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${scoreBadgeColor}`}
             >
               <RecommendationIcon className="w-3.5 h-3.5" />
-              <span>{park.exerciseScore}/100</span>
+              <span>{park.exerciseScore !== null ? `${park.exerciseScore}/100` : 'Sin datos'}</span>
             </div>
             <span className="text-[10px] text-neutral-400 font-medium mt-1 uppercase tracking-wider">
               {park.isHighPollutionZone ? 'No recomendado' : park.exerciseRecommendation}
@@ -120,7 +141,7 @@ export const ParkCard: React.FC<ParkCardProps> = ({
         <div className="w-full bg-neutral-800 h-1.5 rounded-full overflow-hidden mb-4">
           <div
             className={`h-full rounded-full transition-all duration-500 ${scoreBarColor}`}
-            style={{ width: `${park.exerciseScore}%` }}
+            style={{ width: `${park.exerciseScore !== null ? park.exerciseScore : 0}%` }}
           />
         </div>
 
@@ -129,16 +150,27 @@ export const ParkCard: React.FC<ParkCardProps> = ({
           {/* Air Quality */}
           <div>
             <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-500 mb-0.5">
-              Calidad Aire (ICA)
+              Calidad Aire (EEA)
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-sm font-extrabold text-white font-mono">{park.airQuality.aqi}</span>
+              <span className="text-sm font-extrabold text-white font-mono">
+                {park.airQuality.aqi !== null ? park.airQuality.aqi : 'Sin datos'}
+              </span>
               <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${aqiBadgeColor}`}>
                 {park.airQuality.levelLabel.split('/')[0]}
               </span>
             </div>
             <div className="text-[10px] text-neutral-400 mt-1 flex items-center gap-1">
-              <span>NO₂: <strong className={park.airQuality.no2 > 45 ? 'text-red-400' : 'text-neutral-200'}>{park.airQuality.no2} µg/m³</strong></span>
+              <span>
+                NO₂:{' '}
+                {park.airQuality.no2 !== null ? (
+                  <strong className={park.airQuality.no2 > 45 ? 'text-red-400' : 'text-neutral-200'}>
+                    {park.airQuality.no2} µg/m³
+                  </strong>
+                ) : (
+                  <span className="text-neutral-500">Sin datos</span>
+                )}
+              </span>
             </div>
           </div>
 
@@ -149,14 +181,21 @@ export const ParkCard: React.FC<ParkCardProps> = ({
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-sm font-extrabold text-white font-mono">
-                {park.weather.temperature}°C
+                {park.weather.temperature !== null ? `${park.weather.temperature}°C` : 'Sin datos'}
               </span>
               <span className="text-[10px] text-neutral-400">
-                {park.weather.isRaining ? '🌧️ Lluvia' : '☀️ Despejado'}
+                {park.weather.isRaining ? '🌧️ Lluvia' : '☀️ Seco'}
               </span>
             </div>
             <div className="text-[10px] text-neutral-400 mt-1 flex items-center gap-1">
-              <span>Viento: <strong>{park.weather.windSpeed} km/h</strong></span>
+              <span>
+                Viento:{' '}
+                {park.weather.windSpeed !== null ? (
+                  <strong>{park.weather.windSpeed} km/h</strong>
+                ) : (
+                  <span className="text-neutral-500">Sin datos</span>
+                )}
+              </span>
             </div>
           </div>
         </div>
@@ -167,7 +206,7 @@ export const ParkCard: React.FC<ParkCardProps> = ({
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-fuchsia-400 shrink-0" />
               <span className="text-[11px] text-neutral-200">
-                Polen ({park.pollenInfo.dominantSpecies[0]}):
+                Polen ({park.pollenInfo.dominantSpecies[0] || 'Flora'}):
               </span>
             </div>
             <span

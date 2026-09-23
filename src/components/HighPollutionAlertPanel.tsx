@@ -1,6 +1,6 @@
 import React from 'react';
 import { MadridPark } from '../types';
-import { AlertOctagon, ShieldAlert, ArrowRight, Ban, Activity, Wind, AlertTriangle } from 'lucide-react';
+import { AlertOctagon, ArrowRight, Ban, AlertTriangle } from 'lucide-react';
 
 interface HighPollutionAlertPanelProps {
   parks: MadridPark[];
@@ -18,8 +18,8 @@ export const HighPollutionAlertPanel: React.FC<HighPollutionAlertPanelProps> = (
 
   // Find a clean recommended alternative
   const safeAlternatives = [...parks]
-    .filter((p) => !p.isHighPollutionZone && p.exerciseScore >= 80)
-    .sort((a, b) => a.airQuality.aqi - b.airQuality.aqi);
+    .filter((p) => !p.isHighPollutionZone && p.exerciseScore !== null && p.exerciseScore >= 75)
+    .sort((a, b) => (a.airQuality.aqi ?? 999) - (b.airQuality.aqi ?? 999));
   const bestAlternative = safeAlternatives[0];
 
   if (highPollutionParks.length === 0) return null;
@@ -43,10 +43,10 @@ export const HighPollutionAlertPanel: React.FC<HighPollutionAlertPanelProps> = (
               <span className="text-xs text-neutral-400">Picos de Contaminación en Tiempo Real</span>
             </div>
             <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1 font-['Montserrat',sans-serif]">
-              Top 3 Estaciones y Parques No Recomendados para Actividad Física
+              Estaciones y Parques No Recomendados para Actividad Física Intensa
             </h3>
             <p className="text-xs text-neutral-300 mt-1 max-w-3xl leading-relaxed">
-              La red municipal de sensores registra picos de dióxido de nitrógeno (NO₂) y partículas en suspensión (PM₁₀) en las siguientes zonas. Al correr o caminar a ritmo activo, la frecuencia respiratoria aumenta hasta 5 veces, incrementando la absorción alveolar de contaminantes.
+              La red municipal de sensores registra picos de dióxido de nitrógeno (NO₂) o partículas en suspensión en las siguientes zonas. Al correr o caminar a ritmo activo, la ventilación pulmonar se multiplica, incrementando la dosis alveolar absorbida.
             </p>
           </div>
         </div>
@@ -61,7 +61,7 @@ export const HighPollutionAlertPanel: React.FC<HighPollutionAlertPanelProps> = (
               {bestAlternative.name}
             </div>
             <div className="text-[11px] text-emerald-300 font-mono mt-0.5">
-              ICA {bestAlternative.airQuality.aqi} • NO₂ {bestAlternative.airQuality.no2} µg/m³
+              ICA {bestAlternative.airQuality.aqi ?? 'N/D'} • NO₂ {bestAlternative.airQuality.no2 ?? 'N/D'} µg/m³
             </div>
             <button
               onClick={() => onSelectPark(bestAlternative)}
@@ -74,7 +74,7 @@ export const HighPollutionAlertPanel: React.FC<HighPollutionAlertPanelProps> = (
         )}
       </div>
 
-      {/* Grid of 3 Worst Parks */}
+      {/* Grid of Worst Parks */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
         {highPollutionParks.map((park, idx) => (
           <div
@@ -103,16 +103,20 @@ export const HighPollutionAlertPanel: React.FC<HighPollutionAlertPanelProps> = (
                 <div>
                   <span className="text-[9px] uppercase font-bold text-neutral-400 block">Dióxido NO₂</span>
                   <span className="text-sm font-black text-red-400 font-mono">
-                    {park.airQuality.no2} <span className="text-[10px] text-neutral-500">µg/m³</span>
+                    {park.airQuality.no2 !== null ? `${park.airQuality.no2} ` : 'N/D '}
+                    <span className="text-[10px] text-neutral-500">µg/m³</span>
                   </span>
-                  <span className="text-[9px] text-red-400/80 block">Límite OMS: 25</span>
+                  <span className="text-[9px] text-red-400/80 block">Límite EEA: 40</span>
                 </div>
                 <div>
                   <span className="text-[9px] uppercase font-bold text-neutral-400 block">Partículas PM₁₀</span>
                   <span className="text-sm font-black text-orange-400 font-mono">
-                    {park.airQuality.pm10} <span className="text-[10px] text-neutral-500">µg/m³</span>
+                    {park.airQuality.pm10 !== null ? `${park.airQuality.pm10} ` : 'N/D '}
+                    <span className="text-[10px] text-neutral-500">µg/m³</span>
                   </span>
-                  <span className="text-[9px] text-neutral-400 block">ICA: {park.airQuality.aqi}</span>
+                  <span className="text-[9px] text-neutral-400 block">
+                    Índice: {park.airQuality.aqi ?? 'N/D'}
+                  </span>
                 </div>
               </div>
             </div>

@@ -4,18 +4,15 @@ import { SimulationParams, getNextUpdateInfo } from '../services/airQualityServi
 import { exportParkToGPX } from '../services/haversine';
 import {
   Download,
-  Watch,
   Sun,
   Moon,
   SlidersHorizontal,
   Clock,
   CheckCircle2,
-  FileCode,
-  Sparkles,
   RefreshCw,
-  Info,
-  MapPin,
   ExternalLink,
+  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ExportAndSettingsTabProps {
@@ -42,7 +39,6 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
   onRefreshData,
 }) => {
   const [downloadSuccessPark, setDownloadSuccessPark] = useState<string | null>(null);
-  const [downloadHtmlSuccess, setDownloadHtmlSuccess] = useState<boolean>(false);
   const currentPark = selectedPark || parks[0];
 
   const updateInfo = getNextUpdateInfo();
@@ -51,28 +47,23 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
   const timeString = `${minutesRemaining}m ${secondsRemaining.toString().padStart(2, '0')}s`;
 
   const isSimulating =
-    simParams.overrideTemp !== null ||
-    simParams.overrideRain !== null ||
-    simParams.overrideAqi !== null ||
-    simParams.overridePollen !== null;
+    simParams.overrideTemp !== null && simParams.overrideTemp !== undefined ||
+    simParams.overrideRain !== null && simParams.overrideRain !== undefined ||
+    simParams.overrideAqi !== null && simParams.overrideAqi !== undefined ||
+    simParams.overridePollen !== null && simParams.overridePollen !== undefined;
+
+  const hasRealGeometry = Boolean(
+    currentPark &&
+      currentPark.hasRealGeometry &&
+      currentPark.perimeterCoordinates &&
+      currentPark.perimeterCoordinates.length >= 3
+  );
 
   const handleExportGPX = (park: MadridPark) => {
-    if (!park.perimeterCoordinates || park.perimeterCoordinates.length === 0) return;
+    if (!park.hasRealGeometry || !park.perimeterCoordinates || park.perimeterCoordinates.length < 3) return;
     exportParkToGPX(park.name, park.perimeterKm, park.perimeterCoordinates);
     setDownloadSuccessPark(park.id);
     setTimeout(() => setDownloadSuccessPark(null), 3000);
-  };
-
-  const handleDownloadStandaloneHtml = () => {
-    // Triggers download of standalone.html from public directory
-    const link = document.createElement('a');
-    link.href = '/standalone.html';
-    link.download = 'FitAir_Parks_Madrid_Pro_SingleFile.html';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setDownloadHtmlSuccess(true);
-    setTimeout(() => setDownloadHtmlSuccess(false), 3000);
   };
 
   return (
@@ -88,34 +79,21 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <span className="text-[11px] font-black uppercase tracking-widest text-[#ff5500] font-['Montserrat',sans-serif]">
-              CENTRO DE AJUSTES & EXPORTACIÓN
+              CENTRO DE AJUSTES & EXPORTACIÓN GPX
             </span>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight font-['Montserrat',sans-serif] mt-1">
-              Exportación a Relojes Deportivos & Configuración
+              Configuración & Trazados Oficiales OpenStreetMap
             </h2>
             <p className="text-xs text-neutral-400 mt-1 max-w-2xl">
-              Descarga trazados de circuitos saludables en formato GPX para Garmin, Apple Watch y Strava,
-              activa el modo de alto contraste para visibilidad solar y gestiona simulaciones ambientales.
+              Descarga trazados de circuitos saludables en formato GPX para Garmin, Apple Watch y Strava (con polígonos reales obtenidos de OpenStreetMap), activa el modo de alto contraste para luz solar directa y gestiona simulaciones ambientales.
             </p>
           </div>
-
-          {/* Quick Refresh */}
-          <button
-            onClick={onRefreshData}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
-              isHighContrast
-                ? 'bg-neutral-100 border-black text-black hover:bg-neutral-200'
-                : 'bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800'
-            }`}
-          >
-            <RefreshCw className="w-4 h-4 text-[#ff5500]" />
-            <span>Refrescar Datos en Tiempo Real</span>
-          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 1. GPX Export Section for Sports Watches */}
+      {/* 4 Core Setting Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* 1. GPX Export Card */}
         <div
           className={`rounded-3xl p-6 border transition-all flex flex-col justify-between ${
             isHighContrast
@@ -127,44 +105,43 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-neutral-800">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-[#ff5500]/15 text-[#ff5500] border border-[#ff5500]/30">
-                  <Watch className="w-5 h-5" />
+                  <Download className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#ff5500]">
-                    GPS & DISPOSITIVOS
+                    COMPATIBILIDAD CON WEARABLES
                   </span>
                   <h3 className="text-lg font-black font-['Montserrat',sans-serif]">
-                    Descarga de Rutas GPX para Reloj
+                    Exportación GPX (Rutas Reales)
                   </h3>
                 </div>
               </div>
             </div>
 
             <p className="text-xs text-neutral-400 mb-4 leading-relaxed">
-              Exporta el circuito saludable perimetral del parque con waypoints de fuentes de agua
-              potable y distancia exacta. Compatible con <strong>Garmin Connect, Strava, Apple Watch (WorkOutDoors), Polar, Suunto y Coros</strong>.
+              Descarga el trazado perimetral georreferenciado para cargarlo directamente en tu reloj Garmin, Coros, Apple Watch o Strava.
             </p>
 
-            {/* Park Selection */}
+            {/* Park Selector for Export */}
             <div className="mb-4">
-              <label className="text-xs font-bold uppercase tracking-wider text-neutral-400 block mb-2">
-                Selecciona el Parque a Exportar:
+              <label className="text-xs font-bold text-neutral-300 block mb-1.5">
+                Selecciona el parque a exportar:
               </label>
               <select
                 value={currentPark.id}
                 onChange={(e) => {
-                  const found = parks.find((p) => p.id === e.target.value);
-                  if (found) onSelectPark(found);
+                  const p = parks.find((item) => item.id === e.target.value);
+                  if (p) onSelectPark(p);
                 }}
-                className={`w-full p-3 rounded-xl text-xs font-bold border cursor-pointer ${
+                className={`w-full rounded-xl px-3 py-2.5 text-xs font-bold border transition-colors cursor-pointer ${
                   isHighContrast
                     ? 'bg-neutral-100 border-black text-black'
-                    : 'bg-neutral-900 border-neutral-700 text-white'
+                    : 'bg-neutral-900 border-neutral-700 text-white focus:border-[#ff5500]'
                 }`}
               >
                 {parks.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} — {p.perimeterKm} km ({p.circuitType})
+                    {p.name} ({p.perimeterKm} km)
                   </option>
                 ))}
               </select>
@@ -183,8 +160,14 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">Superficie:</span>
-                <span className="font-medium text-neutral-200">{currentPark.circuitType}</span>
+                <span className="text-neutral-400">Geometría OpenStreetMap:</span>
+                <span
+                  className={`font-mono font-bold ${
+                    hasRealGeometry ? 'text-emerald-400' : 'text-amber-400'
+                  }`}
+                >
+                  {hasRealGeometry ? '✓ Polígono real OSM verificado' : '⚠️ No disponible'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-neutral-400">Fuentes potables mapeadas:</span>
@@ -197,13 +180,21 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
 
           <button
             onClick={() => handleExportGPX(currentPark)}
-            className={`w-full py-3 px-4 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
-              downloadSuccessPark === currentPark.id
-                ? 'bg-emerald-500 text-black shadow-emerald-500/25'
-                : 'bg-[#ff5500] hover:bg-[#ff6600] text-black shadow-[#ff5500]/25'
+            disabled={!hasRealGeometry}
+            className={`w-full py-3 px-4 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-2 shadow-lg ${
+              !hasRealGeometry
+                ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed'
+                : downloadSuccessPark === currentPark.id
+                ? 'bg-emerald-500 text-black shadow-emerald-500/25 cursor-pointer'
+                : 'bg-[#ff5500] hover:bg-[#ff6600] text-black shadow-[#ff5500]/25 cursor-pointer'
             }`}
           >
-            {downloadSuccessPark === currentPark.id ? (
+            {!hasRealGeometry ? (
+              <>
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <span>Sin trazado OSM real (GPX deshabilitado)</span>
+              </>
+            ) : downloadSuccessPark === currentPark.id ? (
               <>
                 <CheckCircle2 className="w-4 h-4" />
                 <span>¡Archivo GPX Descargado con Éxito!</span>
@@ -235,7 +226,7 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
                       : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
                   }`}
                 >
-                  {isHighContrast ? <Sun className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                  <Sun className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
@@ -249,9 +240,7 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
             </div>
 
             <p className="text-xs text-neutral-400 mb-5 leading-relaxed">
-              Diseñado específicamente para corredores y caminantes que utilizan la aplicación a plena
-              luz del día en Madrid. Cambia el fondo a blanco absoluto, aumenta los grosores tipográficos y
-              adapta la cartografía del mapa para evitar reflejos solares.
+              Diseñado específicamente para corredores y caminantes que utilizan la aplicación a plena luz del día en Madrid. Cambia el fondo a blanco absoluto, aumenta los contrastes tipográficos y adapta la cartografía del mapa para evitar reflejos solares.
             </p>
 
             <div className="p-4 rounded-2xl bg-neutral-950/80 border border-neutral-800 mb-4 space-y-3">
@@ -270,7 +259,7 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
               <p className="text-[11px] text-neutral-400">
                 {isHighContrast
                   ? 'Fondo blanco puro, bordes oscuros de alto contraste y azulejos abiertos de OpenStreetMap.'
-                  : 'Fondo negro mate (#0A0A0A) con detalles naranja deportivo y mapa CartoDB Dark Matter (100% abierto, sin API Key).'}
+                  : 'Fondo negro mate con detalles naranja deportivo y mapa CartoDB Dark Matter (100% abierto, sin API Key).'}
               </p>
             </div>
           </div>
@@ -331,7 +320,7 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
           </div>
 
           <p className="text-xs text-neutral-400 mb-4">
-            Simula escenarios meteorológicos extremos para comprobar cómo responde el recomendador de ropa (+10°C) y el semáforo de aptitud de cada parque.
+            Simula escenarios meteorológicos extremos para comprobar cómo responde el recomendador de ropa (+10°C) y el semáforo de aptitud de cada parque. Los datos simulados quedan siempre identificados con la etiqueta "SIMULACIÓN".
           </p>
 
           <div className="space-y-4 text-xs">
@@ -340,7 +329,9 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
               <div className="flex justify-between text-neutral-300 font-bold mb-1">
                 <span>Temperatura ambiente:</span>
                 <span className="font-mono text-[#ff5500]">
-                  {simParams.overrideTemp !== null ? `${simParams.overrideTemp} °C` : 'Tiempo Real'}
+                  {simParams.overrideTemp !== null && simParams.overrideTemp !== undefined
+                    ? `${simParams.overrideTemp} °C (Simulado)`
+                    : 'Tiempo Real'}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -370,7 +361,7 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
               <div className="flex justify-between text-neutral-300 font-bold mb-1">
                 <span>Precipitación / Lluvia:</span>
                 <span className="font-mono text-sky-400">
-                  {simParams.overrideRain !== null
+                  {simParams.overrideRain !== null && simParams.overrideRain !== undefined
                     ? simParams.overrideRain
                       ? 'Lluvia Forzada'
                       : 'Seco Forzado'
@@ -410,44 +401,10 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
                 </button>
               </div>
             </div>
-
-            {/* AQI override */}
-            <div>
-              <div className="flex justify-between text-neutral-300 font-bold mb-1">
-                <span>Pico de Contaminación (ICA):</span>
-                <span className="font-mono text-red-400">
-                  {simParams.overrideAqi !== null ? simParams.overrideAqi : 'Tiempo Real'}
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { label: 'Bueno (25)', val: 'good' },
-                  { label: 'Moderado (65)', val: 'moderate' },
-                  { label: 'Pico Crítico (110)', val: 'unfavorable' },
-                ].map((item) => (
-                  <button
-                    key={item.val}
-                    onClick={() =>
-                      onUpdateSimParams({
-                        ...simParams,
-                        overrideAqi: simParams.overrideAqi === item.val ? null : (item.val as any),
-                      })
-                    }
-                    className={`py-1.5 rounded-lg font-bold border text-[11px] transition-all cursor-pointer ${
-                      simParams.overrideAqi === item.val
-                        ? 'bg-red-500 text-white border-red-500'
-                        : 'bg-neutral-900 text-neutral-300 border-neutral-800'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
-        {/* 4. Municipal Open Data & Standalone Download */}
+        {/* 4. Municipal Open Data Status & Synchronizer */}
         <div
           className={`rounded-3xl p-6 border transition-all flex flex-col justify-between ${
             isHighContrast
@@ -466,7 +423,7 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
                     RED MUNICIPAL MADRID
                   </span>
                   <h3 className="text-lg font-black font-['Montserrat',sans-serif]">
-                    Sincronización & Entregable Single-File
+                    Sincronización & Fuentes Abiertas
                   </h3>
                 </div>
               </div>
@@ -489,23 +446,19 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
                 <span className="font-mono font-bold text-white">Cada 20 min (:15, :35, :55)</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-neutral-400">Próxima lectura de estaciones:</span>
+                <span className="text-neutral-400">Próxima lectura telemétrica:</span>
                 <span className="font-mono font-bold text-[#ff5500]">{timeString}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-neutral-400">Estaciones automáticas:</span>
-                <span className="font-mono font-bold text-emerald-400">24 estaciones activas</span>
-              </div>
-              <div className="flex items-center justify-between">
                 <span className="text-neutral-400">Cálculo de distancias:</span>
-                <span className="font-mono font-bold text-sky-400">Fórmula Haversine en JS</span>
+                <span className="font-mono font-bold text-sky-400">Fórmula Haversine real</span>
               </div>
             </div>
 
             <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800 mb-4 space-y-2 text-[11px]">
               <div className="font-bold text-neutral-300 flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-                <span>APIs activas del Ayuntamiento de Madrid:</span>
+                <span>APIs consumidas por el servidor proxy:</span>
               </div>
               <ul className="space-y-1.5 pl-3 list-disc text-neutral-400">
                 <li>
@@ -540,31 +493,14 @@ export const ExportAndSettingsTab: React.FC<ExportAndSettingsTabProps> = ({
                 </li>
               </ul>
             </div>
-
-            <p className="text-xs text-neutral-400 mb-4 leading-relaxed">
-              Puedes descargar la aplicación completa en un <strong>único archivo index.html autónomo</strong> con HTML5, Tailwind CSS, Leaflet.js y Chart.js para ejecutarlo sin necesidad de servidor.
-            </p>
           </div>
 
           <button
-            onClick={handleDownloadStandaloneHtml}
-            className={`w-full py-3 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md ${
-              downloadHtmlSuccess
-                ? 'bg-emerald-500 text-black'
-                : 'bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-700'
-            }`}
+            onClick={onRefreshData}
+            className="w-full py-3 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 bg-[#ff5500] hover:bg-[#ff6600] text-black shadow-md cursor-pointer"
           >
-            {downloadHtmlSuccess ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 text-black" />
-                <span>¡Descarga iniciada de index.html autónomo!</span>
-              </>
-            ) : (
-              <>
-                <FileCode className="w-4 h-4 text-[#ff5500]" />
-                <span>Descargar Versión Autónoma (Single-File index.html)</span>
-              </>
-            )}
+            <RefreshCw className="w-4 h-4" />
+            <span>Forzar Actualización de Estaciones Municipales</span>
           </button>
         </div>
       </div>

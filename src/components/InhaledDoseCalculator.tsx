@@ -36,19 +36,14 @@ export const InhaledDoseCalculator: React.FC<InhaledDoseCalculatorProps> = ({
     selectedPark.airQuality.pm10
   );
 
-  // Clean park comparison (e.g. Casa de Campo with ~14 ug/m3 NO2)
-  const cleanParkDose = calculateInhaledDose(activity, duration, 14, 12);
-  const reductionDose = Math.max(
-    0,
-    Math.round(
-      ((dose.inhaledNo2Micrograms - cleanParkDose.inhaledNo2Micrograms) /
-        (dose.inhaledNo2Micrograms || 1)) *
-        100
-    )
+  const hasRealGeometry = Boolean(
+    selectedPark.hasRealGeometry &&
+      selectedPark.perimeterCoordinates &&
+      selectedPark.perimeterCoordinates.length >= 3
   );
 
   const handleExportGPX = () => {
-    if (!selectedPark.perimeterCoordinates || selectedPark.perimeterCoordinates.length === 0) return;
+    if (!hasRealGeometry || !selectedPark.perimeterCoordinates) return;
     exportParkToGPX(
       selectedPark.name,
       selectedPark.perimeterKm,
@@ -76,7 +71,7 @@ export const InhaledDoseCalculator: React.FC<InhaledDoseCalculatorProps> = ({
           </div>
           <div>
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#ff5500] block font-['Montserrat',sans-serif]">
-              FISIOLOGÍA DEPORTIVA & INTEGRACIÓN RELOJ
+              FISIOLOGÍA RESPIRATORIA & TRAZADOS GPX
             </span>
             <h3 className="text-xl font-black tracking-tight font-['Montserrat',sans-serif]">
               Dosis de Contaminación Inhalada & Exportación GPX
@@ -87,10 +82,18 @@ export const InhaledDoseCalculator: React.FC<InhaledDoseCalculatorProps> = ({
         {/* GPX Export Button */}
         <button
           onClick={handleExportGPX}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all cursor-pointer shadow-lg ${
-            downloadSuccess
-              ? 'bg-emerald-500 text-black shadow-emerald-500/30'
-              : 'bg-[#ff5500] hover:bg-[#ff6600] text-black shadow-[#ff5500]/25'
+          disabled={!hasRealGeometry}
+          title={
+            !hasRealGeometry
+              ? 'No hay geometría real de OpenStreetMap disponible para este parque'
+              : 'Exportar trazado GPX real para reloj deportivo'
+          }
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all shadow-lg ${
+            !hasRealGeometry
+              ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed'
+              : downloadSuccess
+              ? 'bg-emerald-500 text-black shadow-emerald-500/30 cursor-pointer'
+              : 'bg-[#ff5500] hover:bg-[#ff6600] text-black shadow-[#ff5500]/25 cursor-pointer'
           }`}
         >
           {downloadSuccess ? (
@@ -100,140 +103,130 @@ export const InhaledDoseCalculator: React.FC<InhaledDoseCalculatorProps> = ({
             </>
           ) : (
             <>
-              <Watch className="w-4 h-4" />
-              <span>Exportar GPX (Reloj Deportivo)</span>
-              <Download className="w-3.5 h-3.5 ml-0.5" />
+              <Download className="w-4 h-4" />
+              <span>
+                {!hasRealGeometry
+                  ? 'Sin trazado OSM (GPX no disponible)'
+                  : `Exportar GPX de ${selectedPark.name}`}
+              </span>
             </>
           )}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Duration Selector & Ventilation Rate */}
-        <div className="space-y-4">
+      {/* Main Grid: Controls & Calculations */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Left: Duration Slider & Ventilation Rate */}
+        <div className="lg:col-span-4 p-4 rounded-2xl bg-neutral-950/80 border border-neutral-800 space-y-4 text-xs">
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-neutral-400 block mb-2">
-              Duración Estimada del Entrenamiento:
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {[30, 45, 60, 90].map((mins) => (
-                <button
-                  key={mins}
-                  onClick={() => setDuration(mins)}
-                  className={`py-2 px-2 rounded-xl text-xs font-mono font-extrabold border transition-all cursor-pointer ${
-                    duration === mins
-                      ? 'bg-white text-black border-white shadow-md'
-                      : 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:text-white hover:border-neutral-700'
-                  }`}
-                >
-                  {mins} min
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Minute Ventilation Explanation */}
-          <div className="p-3.5 rounded-2xl bg-neutral-950/80 border border-neutral-800/80 space-y-2 text-xs">
-            <div className="flex items-center justify-between text-neutral-400">
-              <span>Tasa Ventilación (VE):</span>
-              <span className="font-mono font-bold text-white">
-                {isRunning ? '~65 Litros/min' : '~20 Litros/min'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-neutral-400">
-              <span>Volumen de Aire Inhalado:</span>
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-neutral-400 font-bold">Duración de la sesión:</span>
               <span className="font-mono font-extrabold text-[#ff5500] text-sm">
-                {dose.airVolumeM3} m³ ({Math.round(dose.airVolumeM3 * 1000)} Litros)
+                {duration} minutos ({Math.floor(duration / 60)}h {duration % 60}m)
               </span>
             </div>
-            <p className="text-[11px] text-neutral-400 leading-relaxed pt-1 border-t border-neutral-900">
-              {isRunning
-                ? 'Al correr a intensidad aeróbica, la respiración bucal y el volumen tidal se multiplican x3.25 respecto a caminar.'
-                : 'Al caminar se mantiene la filtración nasal fisiológica natural, reteniendo gran parte de las partículas.'}
-            </p>
+            <input
+              type="range"
+              min="15"
+              max="180"
+              step="5"
+              value={duration}
+              onChange={(e) => setDuration(parseInt(e.target.value))}
+              className="w-full accent-[#ff5500] cursor-pointer"
+            />
+            <div className="flex justify-between text-[10px] text-neutral-500 mt-1 font-mono">
+              <span>15 min</span>
+              <span>60 min</span>
+              <span>120 min</span>
+              <span>180 min</span>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-neutral-900 border border-neutral-800 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">Modalidad:</span>
+              <span className="font-bold text-white uppercase text-[11px]">
+                {isRunning ? '🏃 Carrera Continua' : '🚶 Caminata Activa'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">Volumen Ventilación:</span>
+              <span className="font-mono font-bold text-sky-400">
+                {dose.ventilationLitersPerMin} L/min ({isRunning ? '45 L/min' : '18 L/min'})
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">Volumen de Aire Inhalado:</span>
+              <span className="font-mono font-bold text-white">
+                {(dose.totalInhaledAirCubicMeters * 1000).toLocaleString()} Litros ({dose.totalInhaledAirCubicMeters} m³)
+              </span>
+            </div>
+          </div>
+
+          <div className="text-[11px] text-neutral-400 leading-relaxed">
+            ℹ️ Al correr, la frecuencia cardíaca y el volumen corriente aumentan la ventilación pulmonar de ~8 L/min en reposo a <strong>45-60 L/min</strong>, multiplicando por 5 la dosis absorbida de contaminantes gaseosos y partículas.
           </div>
         </div>
 
-        {/* Center Column: Inhaled Dose Results */}
-        <div className="p-4 rounded-2xl bg-neutral-950/90 border border-neutral-800 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-                Estimación de Dosis Absorbida
-              </span>
-              <span
-                className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${dose.colorClass}`}
-              >
-                Dosis {dose.doseLevelLabel}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="p-3 rounded-xl bg-neutral-900/80 border border-neutral-800">
-                <div className="text-[10px] uppercase font-bold text-neutral-400">NO₂ Inhalado</div>
-                <div className="text-2xl font-black font-mono text-white mt-1">
-                  {dose.inhaledNo2Micrograms}{' '}
-                  <span className="text-xs font-normal text-neutral-500">µg</span>
-                </div>
-                <div className="text-[9px] text-neutral-400 mt-0.5">Dióxido de nitrógeno</div>
+        {/* Right: Calculated Inhaled Micrograms */}
+        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Card NO2 Inhaled */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400">
+                  Dióxido de Nitrógeno (NO₂)
+                </span>
+                <span className="text-[10px] font-mono text-[#ff5500] font-bold">
+                  {selectedPark.airQuality.no2 !== null ? `${selectedPark.airQuality.no2} µg/m³` : 'Sin datos'}
+                </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-neutral-900/80 border border-neutral-800">
-                <div className="text-[10px] uppercase font-bold text-neutral-400">PM₁₀ Inhalado</div>
-                <div className="text-2xl font-black font-mono text-white mt-1">
-                  {dose.inhaledPm10Micrograms}{' '}
-                  <span className="text-xs font-normal text-neutral-500">µg</span>
-                </div>
-                <div className="text-[9px] text-neutral-400 mt-0.5">Partículas en suspensión</div>
+              <div className="text-3xl font-black text-white font-mono mt-1 mb-1">
+                {dose.inhaledNo2Micrograms !== null ? `${dose.inhaledNo2Micrograms} ` : 'N/D '}
+                <span className="text-sm font-normal text-neutral-400">µg inhalados</span>
               </div>
+
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Masa acumulada de NO₂ depositada en el epitelio respiratorio durante los {duration} minutos en {selectedPark.name}.
+              </p>
             </div>
 
-            <p className="text-xs text-neutral-300 leading-relaxed">{dose.physiologicalImpact}</p>
-          </div>
-
-          {/* Clean Park Comparison Pill */}
-          {reductionDose > 20 && (
-            <div className="mt-3 p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-2">
-              <span className="font-bold text-emerald-400">💡 Alternativa:</span>
-              <span>
-                En Casa de Campo inhalarías un <strong>{reductionDose}% menos</strong> de tóxicos ({cleanParkDose.inhaledNo2Micrograms} µg de NO₂).
+            <div className="mt-4 pt-3 border-t border-neutral-800/80 text-[11px] text-neutral-400 flex items-center justify-between">
+              <span>{selectedPark.airQuality.stationName}</span>
+              <span className="font-bold text-neutral-300">
+                {selectedPark.airQuality.no2 !== null && selectedPark.airQuality.no2 <= 40 ? '✓ Bajo Límite EEA' : '⚠️ Atención'}
               </span>
             </div>
-          )}
-        </div>
-
-        {/* Right Column: Watch Snyc & Circuit Details */}
-        <div className="p-4 rounded-2xl bg-neutral-950/90 border border-neutral-800 space-y-3">
-          <div className="flex items-center gap-2">
-            <Watch className="w-4 h-4 text-[#ff5500]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-white">
-              Sincronización con Reloj
-            </span>
           </div>
 
-          <div className="text-xs text-neutral-300 space-y-2">
-            <div className="flex justify-between py-1 border-b border-neutral-900">
-              <span className="text-neutral-500">Circuito:</span>
-              <span className="font-semibold text-white">{selectedPark.name}</span>
+          {/* Card PM10 Inhaled */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400">
+                  Partículas en Suspensión (PM₁₀)
+                </span>
+                <span className="text-[10px] font-mono text-orange-400 font-bold">
+                  {selectedPark.airQuality.pm10 !== null ? `${selectedPark.airQuality.pm10} µg/m³` : 'Sin datos'}
+                </span>
+              </div>
+
+              <div className="text-3xl font-black text-white font-mono mt-1 mb-1">
+                {dose.inhaledPm10Micrograms !== null ? `${dose.inhaledPm10Micrograms} ` : 'N/D '}
+                <span className="text-sm font-normal text-neutral-400">µg inhalados</span>
+              </div>
+
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Partículas inhalables de menos de 10 micras que alcanzan los bronquios principales y los alvéolos.
+              </p>
             </div>
-            <div className="flex justify-between py-1 border-b border-neutral-900">
-              <span className="text-neutral-500">Distancia por vuelta:</span>
-              <span className="font-mono font-bold text-white">{selectedPark.perimeterKm} km</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-neutral-900">
-              <span className="text-neutral-500">Superficie:</span>
-              <span className="font-semibold text-white">{selectedPark.circuitType}</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-neutral-900">
-              <span className="text-neutral-500">Fuentes de agua:</span>
-              <span className="font-mono font-bold text-emerald-400">{selectedPark.waterFountains} puntos</span>
+
+            <div className="mt-4 pt-3 border-t border-neutral-800/80 text-[11px] text-neutral-400 flex items-center justify-between">
+              <span>Fórmula: Dosis = Concentración × V × t</span>
+              <span className="font-bold text-emerald-400">Modelo Fisiológico</span>
             </div>
           </div>
-
-          <p className="text-[11px] text-neutral-400 leading-snug">
-            El archivo GPX descargado incluye el perímetro y waypoints de hidratación compatibles con
-            <strong> Garmin Connect, Apple Fitness / WorkOutDoors, Strava y Coros</strong>.
-          </p>
         </div>
       </div>
     </div>

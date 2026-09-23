@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { ActivityType, MadridPark } from '../types';
-import { MapPin, Navigation, Compass, Sparkles, Ban } from 'lucide-react';
+import { Navigation } from 'lucide-react';
 
 interface MapViewProps {
   parks: MadridPark[];
@@ -30,7 +30,8 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
-  const userMarkerRef = useRef<L.Marker | L.Circle | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
+  const polygonLayerRef = useRef<L.Polygon | null>(null);
 
   // Initialize Map
   useEffect(() => {
@@ -74,7 +75,6 @@ export const MapView: React.FC<MapViewProps> = ({
     if (!map || !tileLayerRef.current) return;
 
     map.removeLayer(tileLayerRef.current);
-    // CartoDB Dark Matter for dark mode and OpenStreetMap for light / solar contrast (100% free, no API keys)
     const tileUrl = isHighContrast
       ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
       : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
@@ -110,7 +110,6 @@ export const MapView: React.FC<MapViewProps> = ({
           background: #38bdf8;
           border: 3px solid #ffffff;
           box-shadow: 0 0 15px #38bdf8, 0 0 30px rgba(56, 189, 248, 0.6);
-          animation: pulse 1.8s infinite;
         ">
           <div style="
             position: absolute;
@@ -155,7 +154,37 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [userLocation]);
 
-  // Update Markers when parks, selectedPark, activity, or allergyMode change
+  // Draw real OpenStreetMap perimeter polygon when park has real geometry
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (polygonLayerRef.current) {
+      polygonLayerRef.current.remove();
+      polygonLayerRef.current = null;
+    }
+
+    // Only draw if real OpenStreetMap geometry exists (no fake circular routes)
+    if (
+      selectedPark &&
+      selectedPark.hasRealGeometry &&
+      selectedPark.perimeterCoordinates &&
+      selectedPark.perimeterCoordinates.length >= 3
+    ) {
+      const polygon = L.polygon(selectedPark.perimeterCoordinates, {
+        color: '#ff5500',
+        weight: 3,
+        opacity: 0.85,
+        fillColor: '#ff5500',
+        fillOpacity: 0.15,
+        dashArray: '4, 4',
+      }).addTo(map);
+
+      polygonLayerRef.current = polygon;
+    }
+  }, [selectedPark]);
+
+  // Update Markers when parks change
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -170,22 +199,30 @@ export const MapView: React.FC<MapViewProps> = ({
       // 1. 🟢 Apto / Aire Limpio
       // 2. 🟠 Moderado / Precaución Alergias
       // 3. 🔴 ZONA A EVITAR (Pico de contaminación)
-      let colorClass = '#10b981'; // Green (Apto / Aire Limpio)
+      let colorClass = '#10b981'; // Green
       let glowClass = 'rgba(16, 185, 129, 0.4)';
       let statusLabel = '🟢 Apto / Aire Limpio';
       let isWarning = false;
 
-      if (park.isHighPollutionZone || park.exerciseScore < 45 || park.airQuality.level === 'unfavorable') {
-        colorClass = '#ef4444'; // Red (ZONA A EVITAR)
+      if (
+        park.isHighPollutionZone ||
+        (park.exerciseScore !== null && park.exerciseScore < 45) ||
+        park.airQuality.level === 'poor' ||
+        park.airQuality.level === 'very_poor' ||
+        park.airQuality.level === 'extremely_poor' ||
+        park.airQuality.level === 'unfavorable'
+      ) {
+        colorClass = '#ef4444'; // Red
         glowClass = 'rgba(239, 68, 68, 0.6)';
         statusLabel = '🔴 ZONA A EVITAR';
         isWarning = true;
       } else if (
         park.airQuality.level === 'moderate' ||
-        park.exerciseScore < 75 ||
-        (isAllergyMode && (park.pollenInfo.riskLevel === 'high' || park.pollenInfo.riskLevel === 'extreme'))
+        (park.exerciseScore !== null && park.exerciseScore < 75) ||
+        (isAllergyMode &&
+          (park.pollenInfo.riskLevel === 'high' || park.pollenInfo.riskLevel === 'extreme'))
       ) {
-        colorClass = '#ff5500'; // Orange (Moderado / Precaución Alergias)
+        colorClass = '#ff5500'; // Orange
         glowClass = 'rgba(255, 85, 0, 0.4)';
         statusLabel =
           isAllergyMode && park.pollenInfo.riskLevel !== 'low'
@@ -264,7 +301,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
       const marker = L.marker([park.lat, park.lng], { icon: customIcon }).addTo(map);
 
-      // Popup Content with Haversine distance
+      // Popup Content with Haversine distance and real metrics
       const distanceNotice =
         park.userDistanceKm !== undefined
           ? `<div style="font-size: 11px; font-weight: bold; color: #38bdf8; margin-bottom: 6px;">
@@ -278,6 +315,17 @@ export const MapView: React.FC<MapViewProps> = ({
                📡 A ${Math.round(park.stationDistanceKm * 1000)} m de ${park.airQuality.stationName}
              </div>`
           : '';
+
+      const scoreDisplay =
+        park.exerciseScore !== null ? `${park.exerciseScore}/100` : 'Sin datos';
+      const aqiDisplay =
+        park.airQuality.aqi !== null
+          ? `${park.airQuality.aqi} (NO₂: ${park.airQuality.no2 !== null ? `${park.airQuality.no2} µg/m³` : 'Sin datos'})`
+          : 'Sin datos';
+      const weatherDisplay =
+        park.weather.temperature !== null
+          ? `${park.weather.temperature}°C ${park.weather.isRaining ? '🌧️ Lluvia' : '☀️'}`
+          : 'Sin datos meteorológicos';
 
       const popupContent = document.createElement('div');
       popupContent.className = 'park-popup-content font-sans text-xs p-1 min-w-[230px]';
@@ -300,17 +348,17 @@ export const MapView: React.FC<MapViewProps> = ({
         <div style="background: #181818; padding: 8px; border-radius: 8px; border: 1px solid #333; margin-bottom: 8px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <span style="color: #999;">Aptitud Deporte:</span>
-            <span style="color: ${colorClass}; font-weight: 800;">${park.exerciseScore}/100</span>
+            <span style="color: ${colorClass}; font-weight: 800;">${scoreDisplay}</span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <span style="color: #999;">Índice Aire (ICA):</span>
-            <span style="font-weight: 700; color: #fff;">${park.airQuality.aqi} (NO₂: ${park.airQuality.no2} µg/m³)</span>
+            <span style="color: #999;">Índice Aire (EEA):</span>
+            <span style="font-weight: 700; color: #fff;">${aqiDisplay}</span>
           </div>
           ${
             isAllergyMode
               ? `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; padding-top: 4px; border-top: 1px dashed #333;">
-              <span style="color: #d946ef;">Polen (${park.pollenInfo.dominantSpecies[0]}):</span>
+              <span style="color: #d946ef;">Polen (${park.pollenInfo.dominantSpecies[0] || 'Flora'}):</span>
               <span style="font-weight: 700; color: #d946ef;">Riesgo ${park.pollenInfo.riskLabel}</span>
             </div>
           `
@@ -318,7 +366,7 @@ export const MapView: React.FC<MapViewProps> = ({
           }
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="color: #999;">Clima:</span>
-            <span style="font-weight: 700; color: #fff;">${park.weather.temperature}°C ${park.weather.isRaining ? '🌧️ Lluvia' : '☀️'}</span>
+            <span style="font-weight: 700; color: #fff;">${weatherDisplay}</span>
           </div>
         </div>
 
@@ -328,7 +376,7 @@ export const MapView: React.FC<MapViewProps> = ({
           park.isHighPollutionZone
             ? `
           <div style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); padding: 6px; border-radius: 6px; margin-bottom: 8px; font-size: 10px; color: #fca5a5;">
-            ⚠️ Pico de contaminación detectado. Se aconseja no realizar entrenamientos intensos aquí.
+            ⚠️ Pico de contaminación en la red. Se aconseja no realizar entrenamientos intensos aquí.
           </div>
         `
             : ''

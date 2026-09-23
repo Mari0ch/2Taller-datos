@@ -12,7 +12,7 @@ import {
   Filler,
 } from 'chart.js';
 import { MadridPark } from '../types';
-import { Clock, TrendingDown, Sun, ShieldAlert, Sparkles, BarChart2 } from 'lucide-react';
+import { Clock, TrendingDown, Sun, ShieldAlert, Sparkles, BarChart2, Info } from 'lucide-react';
 
 Chart.register(
   LineController,
@@ -37,18 +37,22 @@ export const BestTimeAndEvolutionChart: React.FC<BestTimeAndEvolutionChartProps>
 }) => {
   const chartCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartInstanceRef = useRef<Chart | null>(null);
-  const [activeMetric, setActiveMetric] = useState<'no2' | 'aqi' | 'temp'>('no2');
+  const [activeMetric, setActiveMetric] = useState<'no2' | 'aqi'>('no2');
 
   const hourlyData = selectedPark?.hourlyEvolution || [];
 
-  // Determine optimal hour
-  const lowestPoint = [...hourlyData].sort((a, b) => a.no2 - b.no2)[0];
-  const highestPoint = [...hourlyData].sort((a, b) => b.no2 - a.no2)[0];
+  // Filter valid data points
+  const validPoints = hourlyData.filter(
+    (d): d is typeof d & { no2: number } => d.no2 !== null && typeof d.no2 === 'number'
+  );
+
+  const lowestPoint = [...validPoints].sort((a, b) => a.no2 - b.no2)[0];
+  const highestPoint = [...validPoints].sort((a, b) => b.no2 - a.no2)[0];
 
   const reductionPercent =
     highestPoint && lowestPoint && highestPoint.no2 > 0
       ? Math.round(((highestPoint.no2 - lowestPoint.no2) / highestPoint.no2) * 100)
-      : 28;
+      : null;
 
   useEffect(() => {
     if (!chartCanvasRef.current || hourlyData.length === 0) return;
@@ -66,17 +70,11 @@ export const BestTimeAndEvolutionChart: React.FC<BestTimeAndEvolutionChartProps>
     let unit = ' µg/m³';
 
     if (activeMetric === 'aqi') {
-      datasetLabel = 'Índice de Calidad del Aire (ICA)';
+      datasetLabel = 'Índice de Calidad del Aire EEA';
       dataValues = hourlyData.map((d) => d.aqi);
       borderColor = '#10b981';
       backgroundColor = 'rgba(16, 185, 129, 0.15)';
-      unit = ' ICA';
-    } else if (activeMetric === 'temp') {
-      datasetLabel = 'Temperatura Ambiente (°C)';
-      dataValues = hourlyData.map((d) => d.temperature);
-      borderColor = '#38bdf8';
-      backgroundColor = 'rgba(56, 189, 248, 0.15)';
-      unit = ' °C';
+      unit = ' EEA';
     }
 
     const ctx = chartCanvasRef.current.getContext('2d');
@@ -89,17 +87,22 @@ export const BestTimeAndEvolutionChart: React.FC<BestTimeAndEvolutionChartProps>
         datasets: [
           {
             label: datasetLabel,
-            data: dataValues,
+            data: dataValues as (number | null)[],
             borderColor,
             backgroundColor,
             fill: true,
             tension: 0.35,
             borderWidth: 3,
+            spanGaps: true,
             pointBackgroundColor: hourlyData.map((d) =>
               d.isOptimalWindow ? '#ffffff' : borderColor
             ),
             pointBorderColor: borderColor,
-            pointRadius: hourlyData.map((d) => (d.isOptimalWindow ? 7 : 4)),
+            pointBorderWidth: 2,
+            pointRadius: (ctxItem) => {
+              const idx = ctxItem.dataIndex;
+              return hourlyData[idx]?.isOptimalWindow ? 6 : 4;
+            },
             pointHoverRadius: 8,
           },
         ],
@@ -112,21 +115,26 @@ export const BestTimeAndEvolutionChart: React.FC<BestTimeAndEvolutionChartProps>
             display: false,
           },
           tooltip: {
-            backgroundColor: isHighContrast ? '#000000' : '#111111',
+            backgroundColor: isHighContrast ? '#000000' : '#141414',
             titleColor: '#ffffff',
             bodyColor: '#e5e5e5',
-            borderColor: '#ff5500',
+            borderColor: '#333333',
             borderWidth: 1,
-            padding: 10,
-            displayColors: false,
+            padding: 12,
+            boxPadding: 6,
+            usePointStyle: true,
             callbacks: {
               label: (context) => {
-                const idx = context.dataIndex;
-                const point = hourlyData[idx];
-                return [
-                  `${datasetLabel}: ${context.parsed.y}${unit}`,
-                  point.note ? `Nota: ${point.note}` : '',
-                ].filter(Boolean);
+                const val = context.parsed.y;
+                return ` ${datasetLabel}: ${val !== null && val !== undefined ? val : 'Sin dato'}${unit}`;
+              },
+              afterLabel: (context) => {
+                const item = hourlyData[context.dataIndex];
+                if (!item) return '';
+                const parts: string[] = [];
+                if (item.isOptimalWindow) parts.push('✓ Ventana Óptima Recomendada');
+                if (item.note) parts.push(item.note);
+                return parts.join('\n');
               },
             },
           },
@@ -134,25 +142,24 @@ export const BestTimeAndEvolutionChart: React.FC<BestTimeAndEvolutionChartProps>
         scales: {
           x: {
             grid: {
-              color: isHighContrast ? 'rgba(0,0,0,0.1)' : 'rgba(255, 255, 255, 0.06)',
+              color: isHighContrast ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)',
             },
             ticks: {
-              color: isHighContrast ? '#000000' : '#888888',
-              font: {
-                weight: 'bold',
-                size: 11,
-              },
+              color: isHighContrast ? '#404040' : '#888888',
+              font: { size: 10, family: 'Montserrat, sans-serif' },
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 12,
             },
           },
           y: {
+            beginAtZero: true,
             grid: {
-              color: isHighContrast ? 'rgba(0,0,0,0.1)' : 'rgba(255, 255, 255, 0.06)',
+              color: isHighContrast ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)',
             },
             ticks: {
-              color: isHighContrast ? '#000000' : '#888888',
-              font: {
-                size: 11,
-              },
+              color: isHighContrast ? '#404040' : '#888888',
+              font: { size: 10, family: 'Montserrat, sans-serif' },
             },
           },
         },
@@ -169,130 +176,127 @@ export const BestTimeAndEvolutionChart: React.FC<BestTimeAndEvolutionChartProps>
 
   return (
     <div
-      className={`rounded-3xl p-5 sm:p-6 border transition-all ${
+      className={`rounded-3xl p-5 sm:p-7 border transition-all ${
         isHighContrast
-          ? 'bg-white border-black text-black shadow-lg'
-          : 'bg-[#111111] border-neutral-850 shadow-2xl text-white'
+          ? 'bg-white border-black text-black shadow-xl'
+          : 'bg-[#121212] border-neutral-850 text-white shadow-2xl'
       }`}
     >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-neutral-800">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 rounded-lg bg-[#ff5500]/15 text-[#ff5500] border border-[#ff5500]/30">
-              <Clock className="w-4 h-4" />
-            </span>
-            <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#ff5500] font-['Montserrat',sans-serif]">
-              PREDICTOR DE MEJOR FRANJA HORARIA & TENDENCIA
-            </span>
-          </div>
-          <h3 className="text-xl font-black tracking-tight font-['Montserrat',sans-serif]">
-            {selectedPark ? `Evolución Diaria en ${selectedPark.name}` : 'Evolución Horaria en Madrid'}
-          </h3>
-        </div>
-
-        {/* Metric Selector Buttons */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-neutral-900 border border-neutral-800 self-start sm:self-auto">
-          <button
-            onClick={() => setActiveMetric('no2')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeMetric === 'no2'
-                ? 'bg-[#ff5500] text-black font-extrabold shadow-md'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            NO₂ (µg/m³)
-          </button>
-          <button
-            onClick={() => setActiveMetric('aqi')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeMetric === 'aqi'
-                ? 'bg-emerald-500 text-black font-extrabold shadow-md'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            ICA
-          </button>
-          <button
-            onClick={() => setActiveMetric('temp')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeMetric === 'temp'
-                ? 'bg-sky-400 text-black font-extrabold shadow-md'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            Temp °C
-          </button>
-        </div>
-      </div>
-
-      {/* Best Hour Recommendation Banner */}
-      <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/60 to-neutral-900 border border-emerald-500/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0 mt-0.5">
-            <TrendingDown className="w-5 h-5" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-neutral-800">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-2xl bg-[#ff5500]/15 text-[#ff5500] border border-[#ff5500]/30 shrink-0">
+            <Clock className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
-                ⭐ Ventana Óptima Sugerida para Entrenar
-              </span>
-              <span className="text-[10px] bg-emerald-500 text-black font-extrabold px-2 py-0.5 rounded-full">
-                -{reductionPercent}% NO₂
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#ff5500] font-['Montserrat',sans-serif]">
+                EVOLUCIÓN HORARIA H01-H24 (TELEMETRÍA REAL)
               </span>
             </div>
-            <p className="text-xs text-neutral-200 mt-1 leading-relaxed">
-              Hoy la mejor hora para correr o andar es a las{' '}
-              <strong className="text-white font-extrabold font-mono text-sm">
-                {lowestPoint?.hour || '20:30'} h
-              </strong>
-              : el nivel de dióxido de nitrógeno es un{' '}
-              <strong className="text-emerald-400">{reductionPercent}% menor</strong> respecto a la hora punta vespertina, con temperatura templada y máxima dispersión.
-            </p>
+            <h3 className="text-xl font-black tracking-tight font-['Montserrat',sans-serif]">
+              {selectedPark ? selectedPark.name : 'Parque Seleccionado'}
+            </h3>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 text-xs border-t md:border-t-0 md:border-l border-neutral-800 pt-2 md:pt-0 md:pl-4">
-          <div>
-            <div className="text-[10px] uppercase font-bold text-neutral-400">Ventana Matinal</div>
-            <div className="font-extrabold text-white font-mono">07:00 - 08:30 h</div>
-          </div>
-          <div className="h-6 w-px bg-neutral-800" />
-          <div>
-            <div className="text-[10px] uppercase font-bold text-neutral-400">Ventana Noche</div>
-            <div className="font-extrabold text-white font-mono">20:30 - 22:30 h</div>
-          </div>
+        {/* Metric Selector Buttons */}
+        <div className="flex items-center gap-1.5 bg-neutral-900/90 p-1 rounded-xl border border-neutral-800 self-start sm:self-auto">
+          <button
+            onClick={() => setActiveMetric('no2')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeMetric === 'no2'
+                ? 'bg-[#ff5500] text-black shadow-md'
+                : 'text-neutral-400 hover:text-white'
+            }`}
+          >
+            NO₂ (Dióxido)
+          </button>
+          <button
+            onClick={() => setActiveMetric('aqi')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeMetric === 'aqi'
+                ? 'bg-emerald-500 text-black shadow-md'
+                : 'text-neutral-400 hover:text-white'
+            }`}
+          >
+            Índice EEA
+          </button>
         </div>
       </div>
 
-      {/* Avoid Peak Warning */}
-      <div className="mb-4 flex items-center gap-2 text-xs text-neutral-400">
-        <ShieldAlert className="w-3.5 h-3.5 text-red-400 shrink-0" />
+      {/* Reduction banner if valid points exist */}
+      {lowestPoint && highestPoint && reductionPercent !== null && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+          <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-emerald-400 block">
+                Mejor Hora para Entrenar
+              </span>
+              <span className="text-base font-black text-white font-mono">
+                {lowestPoint.hour} h ({lowestPoint.no2} µg/m³)
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-red-950/40 border border-red-500/30 flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-red-500/20 text-red-400 shrink-0">
+              <ShieldAlert className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-red-400 block">
+                Hora de Mayor Pico
+              </span>
+              <span className="text-base font-black text-white font-mono">
+                {highestPoint.hour} h ({highestPoint.no2} µg/m³)
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-sky-950/40 border border-sky-500/30 flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-sky-500/20 text-sky-400 shrink-0">
+              <TrendingDown className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-sky-400 block">
+                Reducción de Inhalación
+              </span>
+              <span className="text-base font-black text-white font-mono">
+                -{reductionPercent}% entrenando en hora óptima
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Chart Canvas or Fallback */}
+      {hourlyData.length > 0 ? (
+        <div className="relative w-full h-64 sm:h-72">
+          <canvas ref={chartCanvasRef} />
+        </div>
+      ) : (
+        <div className="h-48 flex flex-col items-center justify-center text-center p-6 border border-dashed border-neutral-800 rounded-2xl">
+          <Info className="w-8 h-8 text-neutral-500 mb-2" />
+          <p className="text-sm font-bold text-neutral-300">
+            Sin telemetría horaria disponible para este parque hoy
+          </p>
+          <p className="text-xs text-neutral-500 mt-1">
+            La estación municipal no ha validado horas H01..H24 para esta fecha.
+          </p>
+        </div>
+      )}
+
+      {/* Caption */}
+      <div className="mt-4 pt-3 border-t border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-neutral-400">
         <span>
-          <strong>Franjas a evitar:</strong> 08:15 a 09:30 h y 18:30 a 20:00 h (pico de tráfico en accesos a M-30, A-6 y Castellana).
+          📡 Curva obtenida de las marcas validadas (V) del dataset 212531 del Ayuntamiento de Madrid.
         </span>
-      </div>
-
-      {/* Chart.js Canvas */}
-      <div className="relative w-full h-[240px] sm:h-[280px]">
-        <canvas ref={chartCanvasRef} />
-      </div>
-
-      {/* Legend & Guide Footer */}
-      <div className="mt-4 pt-3 border-t border-neutral-800/80 flex flex-wrap items-center justify-between text-[11px] text-neutral-400 gap-2">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-white border border-[#ff5500]"></span>
-            <span>Puntos blancos = Ventanas doradas de entrenamiento</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-0.5 bg-[#ff5500]"></span>
-            <span>Límite guía OMS: 40 µg/m³ anual / 25 µg/m³ 24h</span>
-          </div>
-        </div>
-        <div className="font-mono text-[10px] text-neutral-500">
-          Estación vinculada: {selectedPark?.airQuality.stationName || 'Red Municipal'}
-        </div>
+        <span className="font-mono text-neutral-500">
+          Estación: {selectedPark?.airQuality.stationName || 'Red Municipal'}
+        </span>
       </div>
     </div>
   );

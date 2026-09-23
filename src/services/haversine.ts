@@ -1,4 +1,4 @@
-// Haversine formula & Sports Inhaled Pollution Calculations for FitAir Parks Madrid Pro
+// Haversine formula, Meteorologic stations & Sports Inhaled Pollution Calculations for FitAir Parks Madrid
 
 export interface GeoCoordinate {
   lat: number;
@@ -15,7 +15,7 @@ export interface MonitoringStation {
   district: string;
 }
 
-// Official Red de Vigilancia de la Calidad del Aire del Ayuntamiento de Madrid (Dataset 212531)
+// Official Red de Vigilancia de la Calidad del Aire del Ayuntamiento de Madrid (Dataset 212531 / 212629)
 export const MADRID_AIR_STATIONS: MonitoringStation[] = [
   {
     code: '28079004',
@@ -29,7 +29,7 @@ export const MADRID_AIR_STATIONS: MonitoringStation[] = [
   {
     code: '28079008',
     stationNumber: '8',
-    name: 'Escuelas Aguirre / Retiro',
+    name: 'Escuelas Aguirre',
     lat: 40.4215533,
     lng: -3.6823158,
     address: 'C/ Alcalá esq. C/ O’Donnell',
@@ -110,7 +110,7 @@ export const MADRID_AIR_STATIONS: MonitoringStation[] = [
   {
     code: '28079038',
     stationNumber: '38',
-    name: 'Cuatro Caminos / Dehesa',
+    name: 'Cuatro Caminos',
     lat: 40.4455439,
     lng: -3.7071303,
     address: 'Avda. Pablo Iglesias esq. C/ Marqués de Lema',
@@ -182,7 +182,7 @@ export const MADRID_AIR_STATIONS: MonitoringStation[] = [
   {
     code: '28079056',
     stationNumber: '56',
-    name: 'Plaza Elíptica / Arganzuela',
+    name: 'Plaza Elíptica',
     lat: 40.3850336,
     lng: -3.7187679,
     address: 'Pza. Fernández Ladreda (Intercambiador)',
@@ -226,9 +226,246 @@ export const MADRID_AIR_STATIONS: MonitoringStation[] = [
   },
 ];
 
+// Red Meteorológica Municipal del Ayuntamiento de Madrid (Dataset 300754)
+export const MADRID_METEO_STATIONS: MonitoringStation[] = [
+  {
+    code: '102',
+    stationNumber: '102',
+    name: 'Retiro (Palacio de Cristal)',
+    lat: 40.41444,
+    lng: -3.6825,
+    address: 'Parque del Retiro',
+    district: 'Retiro',
+  },
+  {
+    code: '103',
+    stationNumber: '103',
+    name: 'Villaverde',
+    lat: 40.34715,
+    lng: -3.71332,
+    address: 'Villaverde',
+    district: 'Villaverde',
+  },
+  {
+    code: '104',
+    stationNumber: '104',
+    name: 'Hortaleza / Arturo Soria',
+    lat: 40.4578,
+    lng: -3.6528,
+    address: 'Hortaleza',
+    district: 'Hortaleza',
+  },
+  {
+    code: '106',
+    stationNumber: '106',
+    name: 'Cuatro Vientos',
+    lat: 40.3775,
+    lng: -3.7886,
+    address: 'Cuatro Vientos',
+    district: 'Latina',
+  },
+  {
+    code: '107',
+    stationNumber: '107',
+    name: 'El Pardo',
+    lat: 40.51807,
+    lng: -3.77461,
+    address: 'El Pardo',
+    district: 'Fuencarral-El Pardo',
+  },
+  {
+    code: '108',
+    stationNumber: '108',
+    name: 'Méndez Álvaro',
+    lat: 40.39809,
+    lng: -3.67843,
+    address: 'Méndez Álvaro',
+    district: 'Arganzuela',
+  },
+  {
+    code: '109',
+    stationNumber: '109',
+    name: 'Castellana',
+    lat: 40.43989,
+    lng: -3.69037,
+    address: 'Paseo de la Castellana 80',
+    district: 'Salamanca',
+  },
+  {
+    code: '110',
+    stationNumber: '110',
+    name: 'Barajas',
+    lat: 40.4769,
+    lng: -3.58,
+    address: 'Barajas',
+    district: 'Barajas',
+  },
+  {
+    code: '111',
+    stationNumber: '111',
+    name: 'Tres Olivos',
+    lat: 40.50055,
+    lng: -3.68972,
+    address: 'Tres Olivos',
+    district: 'Fuencarral-El Pardo',
+  },
+  {
+    code: '112',
+    stationNumber: '112',
+    name: 'Vallecas',
+    lat: 40.38815,
+    lng: -3.65152,
+    address: 'Vallecas',
+    district: 'Puente de Vallecas',
+  },
+  {
+    code: '113',
+    stationNumber: '113',
+    name: 'Casa de Campo (Meteo)',
+    lat: 40.41936,
+    lng: -3.74734,
+    address: 'Casa de Campo',
+    district: 'Moncloa-Aravaca',
+  },
+  {
+    code: '114',
+    stationNumber: '114',
+    name: 'Puerta del Rey / Madrid Río',
+    lat: 40.4172,
+    lng: -3.7258,
+    address: 'Puerta del Rey',
+    district: 'Moncloa-Aravaca',
+  },
+  {
+    code: '115',
+    stationNumber: '115',
+    name: 'Sanchinarro',
+    lat: 40.4942,
+    lng: -3.6605,
+    address: 'Sanchinarro',
+    district: 'Hortaleza',
+  },
+  {
+    code: '28079004',
+    stationNumber: '4',
+    name: 'Plaza de España',
+    lat: 40.42388,
+    lng: -3.71226,
+    address: 'Plaza de España',
+    district: 'Centro',
+  },
+  {
+    code: '28079008',
+    stationNumber: '8',
+    name: 'Escuelas Aguirre',
+    lat: 40.42155,
+    lng: -3.68232,
+    address: 'C/ Alcalá',
+    district: 'Salamanca',
+  },
+  {
+    code: '28079016',
+    stationNumber: '16',
+    name: 'Arturo Soria',
+    lat: 40.44005,
+    lng: -3.63924,
+    address: 'Arturo Soria',
+    district: 'Ciudad Lineal',
+  },
+  {
+    code: '28079018',
+    stationNumber: '18',
+    name: 'Farolillo',
+    lat: 40.39478,
+    lng: -3.73184,
+    address: 'Farolillo',
+    district: 'Carabanchel',
+  },
+  {
+    code: '28079024',
+    stationNumber: '24',
+    name: 'Casa de Campo',
+    lat: 40.41936,
+    lng: -3.74734,
+    address: 'Casa de Campo',
+    district: 'Moncloa-Aravaca',
+  },
+  {
+    code: '28079035',
+    stationNumber: '35',
+    name: 'Plaza del Carmen',
+    lat: 40.41921,
+    lng: -3.70317,
+    address: 'Plaza del Carmen',
+    district: 'Centro',
+  },
+  {
+    code: '28079036',
+    stationNumber: '36',
+    name: 'Moratalaz',
+    lat: 40.40795,
+    lng: -3.64531,
+    address: 'Moratalaz',
+    district: 'Moratalaz',
+  },
+  {
+    code: '28079038',
+    stationNumber: '38',
+    name: 'Cuatro Caminos',
+    lat: 40.44554,
+    lng: -3.70713,
+    address: 'Cuatro Caminos',
+    district: 'Chamberí',
+  },
+  {
+    code: '28079039',
+    stationNumber: '39',
+    name: 'Barrio del Pilar',
+    lat: 40.47823,
+    lng: -3.71154,
+    address: 'Barrio del Pilar',
+    district: 'Fuencarral',
+  },
+  {
+    code: '28079054',
+    stationNumber: '54',
+    name: 'Ensanche de Vallecas',
+    lat: 40.37301,
+    lng: -3.61214,
+    address: 'Ensanche de Vallecas',
+    district: 'Villa de Vallecas',
+  },
+  {
+    code: '28079056',
+    stationNumber: '56',
+    name: 'Plaza Elíptica',
+    lat: 40.38503,
+    lng: -3.71877,
+    address: 'Plaza Elíptica',
+    district: 'Carabanchel',
+  },
+  {
+    code: '28079058',
+    stationNumber: '58',
+    name: 'El Pardo',
+    lat: 40.51807,
+    lng: -3.77461,
+    address: 'El Pardo',
+    district: 'Fuencarral-El Pardo',
+  },
+  {
+    code: '28079059',
+    stationNumber: '59',
+    name: 'Juan Carlos I',
+    lat: 40.46514,
+    lng: -3.60903,
+    address: 'Juan Carlos I',
+    district: 'Barajas',
+  },
+];
+
 /**
- * Calculates the great-circle distance between two points on the Earth's surface
- * using the Haversine formula in JavaScript.
+ * Calculates great-circle distance between two GPS coordinates using the Haversine formula
  * Returns distance in kilometers with 2 decimal precision.
  */
 export function haversineDistanceKm(
@@ -255,7 +492,7 @@ export function haversineDistanceKm(
 }
 
 /**
- * Finds the nearest monitoring station to a given park location using Haversine
+ * Finds nearest monitoring station to a given park location using Haversine
  */
 export function findNearestStation(
   lat: number,
@@ -277,44 +514,74 @@ export function findNearestStation(
 }
 
 /**
- * Generates perimeter GPS coordinates loop around a park center
- * for route simulation and GPX export.
+ * Finds nearest meteorological station to a given park location
  */
-export function generateParkPerimeterCoords(
-  centerLat: number,
-  centerLng: number,
-  radiusKm: number,
-  numPoints = 12
-): [number, number][] {
-  const coords: [number, number][] = [];
-  const kmToLat = 1 / 110.574;
-  const kmToLng = 1 / (111.32 * Math.cos((centerLat * Math.PI) / 180));
+export function findNearestMeteoStation(
+  lat: number,
+  lng: number,
+  stations = MADRID_METEO_STATIONS
+): { station: MonitoringStation; distanceKm: number } {
+  let minDistance = Infinity;
+  let nearest = stations[0];
 
-  for (let i = 0; i <= numPoints; i++) {
-    const angle = (i * 2 * Math.PI) / numPoints;
-    // Slight perturbation to create realistic trail shapes
-    const r = radiusKm * (0.85 + 0.3 * Math.sin(angle * 3));
-    const lat = centerLat + r * Math.sin(angle) * kmToLat;
-    const lng = centerLng + r * Math.cos(angle) * kmToLng;
-    coords.push([Math.round(lat * 100000) / 100000, Math.round(lng * 100000) / 100000]);
+  for (const st of stations) {
+    const d = haversineDistanceKm(lat, lng, st.lat, st.lng);
+    if (d < minDistance) {
+      minDistance = d;
+      nearest = st;
+    }
   }
 
-  return coords;
+  return { station: nearest, distanceKm: minDistance };
 }
 
 /**
- * Inhaled pollution dose calculator
- * Based on sports exercise physiology:
- * Minute ventilation (VE):
- * - Walking: ~20 L/min (0.020 m³/min -> 1.2 m³/hour)
- * - Running (aerobic 70-80% HRmax): ~65 L/min (0.065 m³/min -> 3.9 m³/hour)
+ * Calculates standard Apparent Temperature (sensación térmica) based on
+ * Steadman's model (1984) and Australian Bureau of Meteorology formulation.
+ * Formula:
+ * AT = Ta + 0.33 * e - 0.70 * ws - 4.00
+ * where:
+ * Ta = dry bulb temperature (°C)
+ * e  = water vapor pressure (hPa) = (rh / 100) * 6.105 * exp((17.27 * Ta) / (237.7 + Ta))
+ * ws = wind speed (m/s) = windKmH / 3.6
  */
+export function calculateApparentTemperature(
+  tempC: number | null,
+  humidity: number | null,
+  windSpeedKmH: number | null
+): number | null {
+  if (tempC === null || isNaN(tempC)) return null;
+  const rh = humidity !== null && !isNaN(humidity) ? humidity : 50;
+  const wsKmh = windSpeedKmH !== null && !isNaN(windSpeedKmH) ? windSpeedKmH : 10;
+  const wsMs = wsKmh / 3.6;
+
+  // Vapor pressure in hPa
+  const e = (rh / 100) * 6.105 * Math.exp((17.27 * tempC) / (237.7 + tempC));
+
+  // Steadman's Apparent Temperature formula
+  let at = tempC + 0.33 * e - 0.7 * wsMs - 4.0;
+
+  // Cold conditions with wind: blend with Wind Chill standard
+  if (tempC <= 10 && wsKmh >= 5) {
+    const windChill =
+      13.12 +
+      0.6215 * tempC -
+      11.37 * Math.pow(wsKmh, 0.16) +
+      0.3965 * tempC * Math.pow(wsKmh, 0.16);
+    at = Math.min(at, windChill);
+  }
+
+  return Math.round(at * 10) / 10;
+}
+
 export interface InhaledDoseResult {
   durationMinutes: number;
   airVolumeM3: number;
-  inhaledNo2Micrograms: number;
-  inhaledPm10Micrograms: number;
-  doseLevel: 'baja' | 'moderada' | 'alta' | 'critica';
+  ventilationLitersPerMin: number;
+  totalInhaledAirCubicMeters: number;
+  inhaledNo2Micrograms: number | null;
+  inhaledPm10Micrograms: number | null;
+  doseLevel: 'baja' | 'moderada' | 'alta' | 'critica' | 'no_data';
   doseLevelLabel: string;
   colorClass: string;
   physiologicalImpact: string;
@@ -323,41 +590,60 @@ export interface InhaledDoseResult {
 export function calculateInhaledDose(
   activity: 'running' | 'walking',
   durationMinutes: number,
-  no2Ugm3: number,
-  pm10Ugm3: number
+  no2Ugm3: number | null,
+  pm10Ugm3: number | null
 ): InhaledDoseResult {
-  // Ventilation rate in cubic meters per minute
   const ventilationRateM3PerMin = activity === 'running' ? 0.065 : 0.02;
+  const ventilationLitersPerMin = activity === 'running' ? 65 : 20;
   const totalVolumeM3 = Math.round(ventilationRateM3PerMin * durationMinutes * 10) / 10;
 
-  const inhaledNo2 = Math.round(totalVolumeM3 * no2Ugm3);
-  const inhaledPm10 = Math.round(totalVolumeM3 * pm10Ugm3);
-  const totalToxicDose = inhaledNo2 + inhaledPm10 * 0.5;
+  if (no2Ugm3 === null && pm10Ugm3 === null) {
+    return {
+      durationMinutes,
+      airVolumeM3: totalVolumeM3,
+      ventilationLitersPerMin,
+      totalInhaledAirCubicMeters: totalVolumeM3,
+      inhaledNo2Micrograms: null,
+      inhaledPm10Micrograms: null,
+      doseLevel: 'no_data',
+      doseLevelLabel: 'Sin datos',
+      colorClass: 'text-neutral-400 bg-neutral-800/40 border-neutral-700/40',
+      physiologicalImpact:
+        'No se dispone de mediciones de NO₂ o PM10 en las estaciones de control del entorno para calcular la dosis inhalada.',
+    };
+  }
+
+  const no2 = no2Ugm3 ?? 0;
+  const pm10 = pm10Ugm3 ?? 0;
+
+  const inhaledNo2 = no2Ugm3 !== null ? Math.round(totalVolumeM3 * no2) : null;
+  const inhaledPm10 = pm10Ugm3 !== null ? Math.round(totalVolumeM3 * pm10) : null;
+  const totalToxicDose = (inhaledNo2 ?? 0) + (inhaledPm10 ?? 0) * 0.5;
 
   let doseLevel: 'baja' | 'moderada' | 'alta' | 'critica' = 'baja';
   let doseLevelLabel = 'Baja / Segura';
   let colorClass = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
   let physiologicalImpact =
-    'Carga pulmonar inocua. Los cilios bronquiales y el sistema mucociliar filtran eficientemente el aire sin estrés oxidativo.';
+    'Carga pulmonar inocua. El sistema mucociliar filtra eficientemente el aire sin estrés oxidativo.';
 
   if (totalToxicDose > 250) {
     doseLevel = 'critica';
     doseLevelLabel = 'Crítica / Alerta';
     colorClass = 'text-red-400 bg-red-500/10 border-red-500/30';
     physiologicalImpact =
-      'Elevada penetración alveolar de NO₂ y partículas finas. Riesgo de broncoconstricción, aumento de citoquinas inflamatorias y tos en deportistas.';
+      'Elevada penetración alveolar de contaminantes. Riesgo de broncoconstricción e irritación respiratoria en esfuerzo.';
   } else if (totalToxicDose > 140) {
     doseLevel = 'alta';
     doseLevelLabel = 'Elevada';
     colorClass = 'text-orange-400 bg-orange-500/10 border-orange-500/30';
     physiologicalImpact =
-      'Estrés pulmonar moderado-alto. La hiperventilación introduce contaminantes a las vías respiratorias bajas. Conviene acortar la sesión o buscar otro parque.';
+      'Estrés pulmonar moderado-alto. La hiperventilación introduce partículas finas en vías respiratorias bajas.';
   } else if (totalToxicDose > 70) {
     doseLevel = 'moderada';
     doseLevelLabel = 'Moderada';
     colorClass = 'text-[#ff5500] bg-[#ff5500]/10 border-[#ff5500]/30';
     physiologicalImpact =
-      'Nivel asumible para deportistas sanos. Personas con asma inducida por esfuerzo o rinitis deben vigilar sensaciones.';
+      'Nivel asumible para deportistas sin patologías. Personas con hiperreactividad bronquial deben moderar el ritmo.';
   }
 
   return {
@@ -373,17 +659,14 @@ export function calculateInhaledDose(
 }
 
 /**
- * Creates and triggers a download of a valid GPX file with the circuit
- * compatible with Garmin, Apple Watch, Strava, Polar, Suunto, Coros.
+ * Generates valid GPX 1.1 XML string for an array of [lat, lng] coordinates
  */
-export function exportParkToGPX(
+export function generateGPXString(
   parkName: string,
   perimeterKm: number,
   coords: [number, number][]
-): void {
-  const sanitizedName = parkName.replace(/[^a-zA-Z0-9_-]/g, '_');
+): string {
   const nowIso = new Date().toISOString();
-
   let trackPointsXml = '';
   coords.forEach(([lat, lng], idx) => {
     trackPointsXml += `      <trkpt lat="${lat}" lon="${lng}">
@@ -393,16 +676,16 @@ export function exportParkToGPX(
       </trkpt>\n`;
   });
 
-  const gpxContent = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="FitAir Parks Madrid Pro - https://madrid.es"
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="FitAir Parks Madrid Pro"
   xmlns="http://www.topografix.com/GPX/1/1"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
-    <name>Circuito Saludable ${parkName}</name>
-    <desc>Trazado de running y senderismo urbano libre de picos de polución - Perímetro: ${perimeterKm} km</desc>
+    <name>${parkName} - Circuito Deportivo</name>
+    <desc>Trazado de running y senderismo OpenStreetMap - Perímetro: ${perimeterKm} km</desc>
     <author>
-      <name>FitAir Parks Madrid Pro</name>
+      <name>FitAir Parks Madrid</name>
     </author>
     <time>${nowIso}</time>
   </metadata>
@@ -413,6 +696,23 @@ export function exportParkToGPX(
 ${trackPointsXml}    </trkseg>
   </trk>
 </gpx>`;
+}
+
+/**
+ * Creates and triggers a download of a valid GPX file with the circuit
+ * Requires real OSM coordinates (array of [lat, lng]).
+ */
+export function exportParkToGPX(
+  parkName: string,
+  perimeterKm: number,
+  coords: [number, number][] | null | undefined
+): void {
+  if (!coords || coords.length < 3) {
+    throw new Error(`No se dispone de trazado geométrico real en OpenStreetMap para ${parkName}.`);
+  }
+
+  const sanitizedName = parkName.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const gpxContent = generateGPXString(parkName, perimeterKm, coords);
 
   const blob = new Blob([gpxContent], { type: 'application/gpx+xml;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -423,54 +723,4 @@ ${trackPointsXml}    </trkseg>
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-}
-
-/**
- * Generates 24-hour diurnal profile of air quality & weather for Madrid
- * Incorporates Madrid's known traffic curves:
- * - Morning rush hour peak: 08:00 - 09:30 (High NO2)
- * - Evening rush hour peak: 18:30 - 20:00 (High NO2)
- * - Cleanest training windows: 06:30 - 08:00 and 20:30 - 22:30
- */
-export interface HourlyDataPoint {
-  hour: string;
-  no2: number;
-  aqi: number;
-  temperature: number;
-  isOptimalWindow: boolean;
-  note: string;
-}
-
-export function generateHourlyEvolution(
-  currentNo2: number,
-  currentAqi: number,
-  currentTemp: number
-): HourlyDataPoint[] {
-  const hours = [
-    { label: '06:00', no2Factor: 0.65, tempOffset: -4, note: 'Aire limpio nocturno' },
-    { label: '07:30', no2Factor: 0.75, tempOffset: -3, note: '🏆 Ventana Oro Mañana' },
-    { label: '08:30', no2Factor: 1.35, tempOffset: -1, note: '🚗 Pico Tráfico Matinal' },
-    { label: '10:30', no2Factor: 1.05, tempOffset: 1, note: 'Dispersión solar' },
-    { label: '13:00', no2Factor: 0.85, tempOffset: 4, note: 'Calor central' },
-    { label: '16:00', no2Factor: 0.90, tempOffset: 5, note: 'Máxima térmica' },
-    { label: '18:30', no2Factor: 1.40, tempOffset: 3, note: '🚗 Pico Tráfico Tarde' },
-    { label: '20:30', no2Factor: 0.72, tempOffset: 0, note: '🏆 Ventana Oro Noche' },
-    { label: '22:30', no2Factor: 0.68, tempOffset: -2, note: 'Noche fresca' },
-  ];
-
-  return hours.map((h) => {
-    const no2 = Math.round(currentNo2 * h.no2Factor);
-    const aqi = Math.round(currentAqi * (h.no2Factor * 0.9 + 0.1));
-    const temp = Math.round((currentTemp + h.tempOffset) * 10) / 10;
-    const isOptimal = h.label === '07:30' || h.label === '20:30';
-
-    return {
-      hour: h.label,
-      no2,
-      aqi,
-      temperature: temp,
-      isOptimalWindow: isOptimal,
-      note: h.note,
-    };
-  });
 }

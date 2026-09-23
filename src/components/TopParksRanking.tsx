@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityType, MadridPark } from '../types';
-import { Award, Sparkles, Wind, Thermometer, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Award, Wind, Thermometer, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface TopParksRankingProps {
   parks: MadridPark[];
@@ -15,13 +15,16 @@ export const TopParksRanking: React.FC<TopParksRankingProps> = ({
   selectedPark,
   onSelectPark,
   onOpenDetails,
-  activity,
 }) => {
-  // Sort parks by exercise score descending
-  const sorted = [...parks].sort((a, b) => b.exerciseScore - a.exerciseScore);
+  // Sort parks by exercise score descending (handle null)
+  const sorted = [...parks]
+    .filter((p) => p.exerciseScore !== null)
+    .sort((a, b) => (b.exerciseScore ?? 0) - (a.exerciseScore ?? 0));
   const topThree = sorted.slice(0, 3);
 
   const medals = ['🥇', '🥈', '🥉'];
+
+  if (topThree.length === 0) return null;
 
   return (
     <div className="mb-8">
@@ -36,7 +39,7 @@ export const TopParksRanking: React.FC<TopParksRankingProps> = ({
           </h2>
         </div>
         <p className="text-xs text-neutral-400">
-          Actualizado cada 20 minutos según la red de sensores municipales
+          Evaluado en tiempo real según el Índice Europeo de Calidad del Aire (EEA)
         </p>
       </div>
 
@@ -59,7 +62,7 @@ export const TopParksRanking: React.FC<TopParksRankingProps> = ({
                 <span className="text-2xl">{medals[index]}</span>
                 <div className="flex items-center gap-1 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-lg text-xs font-mono font-extrabold">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>{park.exerciseScore}/100</span>
+                  <span>{park.exerciseScore !== null ? `${park.exerciseScore}/100` : 'Sin datos'}</span>
                 </div>
               </div>
 
@@ -79,11 +82,11 @@ export const TopParksRanking: React.FC<TopParksRankingProps> = ({
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-white flex items-center gap-1">
                     <Thermometer className="w-3.5 h-3.5 text-[#ff5500]" />
-                    {park.weather.temperature}°C
+                    {park.weather.temperature !== null ? `${park.weather.temperature}°C` : 'N/D'}
                   </span>
                   <span className="font-mono text-emerald-400 flex items-center gap-1">
                     <Wind className="w-3.5 h-3.5" />
-                    ICA {park.airQuality.aqi}
+                    EEA {park.airQuality.aqi ?? 'N/D'}
                   </span>
                 </div>
 
